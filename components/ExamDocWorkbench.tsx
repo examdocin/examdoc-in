@@ -21,13 +21,15 @@ import {
   ArrowUp,
   ArrowDown,
   Sliders,
-  Binary,
   RefreshCw,
-  Eye
+  Eye,
+  ChevronDown,
+  ChevronUp,
+  Wand2
 } from "lucide-react";
 import {
   EXAMS,
-  ExamSpec,
+  ExamPreset,
   DocumentPreset,
   ToolTabId,
   OFFICIAL_DECLARATIONS
@@ -68,7 +70,7 @@ function getTodayFormattedDDMMYYYY(): string {
 }
 
 export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchProps) {
-  const currentExam: ExamSpec =
+  const currentExam: ExamPreset =
     EXAMS.find((e) => e.slug === initialExamSlug) || EXAMS[0];
 
   const [selectedExamSlug, setSelectedExamSlug] = useState<string>(currentExam.slug);
@@ -76,18 +78,21 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
   const [activeTab, setActiveTab] = useState<ToolTabId>(activeExam.defaultTab);
   const [selectedPresetId, setSelectedPresetId] = useState<string>(
-    activeExam.presets[0]?.id || "ssc-photo"
+    activeExam.presets[0]?.id || "ssc-cgl-photo"
   );
 
-  // Shared Binary Spec State (populated by selected preset, editable by user)
+  // Shared Specification State
   const [widthPx, setWidthPx] = useState<number>(activeExam.presets[0]?.widthPx || 275);
   const [heightPx, setHeightPx] = useState<number>(activeExam.presets[0]?.heightPx || 354);
   const [minKB, setMinKB] = useState<number>(activeExam.presets[0]?.minKB || 20);
   const [maxKB, setMaxKB] = useState<number>(activeExam.presets[0]?.maxKB || 50);
   const [dpi, setDpi] = useState<200 | 300 | 600>(activeExam.presets[0]?.dpi || 200);
+  const [showCustomSpec, setShowCustomSpec] = useState<boolean>(false);
+  const [showBinaryDetails, setShowBinaryDetails] = useState<boolean>(false);
 
   // Tab 1: Photo Maker State
   const [photoImage, setPhotoImage] = useState<HTMLImageElement | null>(null);
+  const [uploadedPhotoName, setUploadedPhotoName] = useState<string>("Sample Demo Photo");
   const [photoZoom, setPhotoZoom] = useState<number>(1.0);
   const [photoPanX, setPhotoPanX] = useState<number>(0);
   const [photoPanY, setPhotoPanY] = useState<number>(0);
@@ -104,7 +109,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
   const [show80FaceGuide, setShow80FaceGuide] = useState<boolean>(
     activeExam.presets[0]?.requiresFaceOval ?? true
   );
-  const [photoBorderPx, setPhotoBorderPx] = useState<number>(0);
   const [packedPhoto, setPackedPhoto] = useState<PackedJpegResult | null>(null);
   const [cleanPhotoCanvas, setCleanPhotoCanvas] = useState<HTMLCanvasElement | null>(null);
   const [photoProcessing, setPhotoProcessing] = useState<boolean>(false);
@@ -112,6 +116,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
   // Tab 2: Signature, Thumb & Declaration State
   const [signImage, setSignImage] = useState<HTMLImageElement | null>(null);
+  const [uploadedSignName, setUploadedSignName] = useState<string>("Sample Handwritten Signature");
   const [signZoom, setSignZoom] = useState<number>(1.0);
   const [signPanX, setSignPanX] = useState<number>(0);
   const [signPanY, setSignPanY] = useState<number>(0);
@@ -157,7 +162,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Apply preset whenever preset selection changes
   const applyPreset = useCallback((preset: DocumentPreset) => {
     setSelectedPresetId(preset.id);
     setActiveTab(preset.tab);
@@ -177,7 +181,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
   }, []);
 
-  // Load demo samples on initial client mount so user immediately sees live binary compliance
+  // Load demo samples on initial client mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -207,7 +211,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     };
   }, []);
 
-  // Re-render Tab 1 Photo Maker + Binary JPEG Packer whenever parameters change
+  // Re-render Tab 1 Photo Maker + Binary JPEG Packer
   useEffect(() => {
     if (!photoImage) return;
     let cancelled = false;
@@ -229,13 +233,12 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
           candidateName,
           dateOfPhoto,
           dopPrefix,
-          borderWidthPx: photoBorderPx
+          borderWidthPx: 0
         });
 
         if (cancelled) return;
         setCleanPhotoCanvas(renderedCanvas);
 
-        // Draw preview canvas (with optional 80% Face Coverage Oval Guide overlay)
         const previewCanvas = photoPreviewCanvasRef.current;
         if (previewCanvas) {
           previewCanvas.width = renderedCanvas.width;
@@ -254,7 +257,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
           }
         }
 
-        // Encode true binary-compliant JPEG with 200/300 DPI JFIF header + [minKB, maxKB] binary search & EOI padding
         const safeMinKB = Math.max(4, Math.min(minKB, maxKB - 2));
         const safeMaxKB = Math.max(safeMinKB + 2, maxKB);
         const packed = await encodeCompliantJpeg(renderedCanvas, {
@@ -273,7 +275,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
           setPhotoProcessing(false);
         }
       }
-    }, 120);
+    }, 100);
 
     return () => {
       cancelled = true;
@@ -297,11 +299,10 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     candidateName,
     dateOfPhoto,
     dopPrefix,
-    show80FaceGuide,
-    photoBorderPx
+    show80FaceGuide
   ]);
 
-  // Re-render Tab 2 Signature, Thumb & Declaration Adaptive Thresholding + Binary Packer
+  // Re-render Tab 2 Signature, Thumb & Declaration
   useEffect(() => {
     if (!signImage) return;
     let cancelled = false;
@@ -345,7 +346,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
           setSignProcessing(false);
         }
       }
-    }, 120);
+    }, 100);
 
     return () => {
       cancelled = true;
@@ -368,7 +369,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     inkMode
   ]);
 
-  // Re-render Tab 3 PDF Packer when pages or target KB change
+  // Re-render Tab 3 PDF Packer
   useEffect(() => {
     if (pdfPages.length === 0) {
       setPackedPdf(null);
@@ -396,7 +397,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
           setPdfProcessing(false);
         }
       }
-    }, 180);
+    }, 150);
 
     return () => {
       cancelled = true;
@@ -411,7 +412,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     pdfGrayscale
   ]);
 
-  // Re-render Tab 5 4x6 Inch Studio Print Sheet whenever cleanPhotoCanvas or sheet settings change
+  // Re-render Tab 5 4x6 Inch Studio Print Sheet
   useEffect(() => {
     if (!cleanPhotoCanvas) return;
     let cancelled = false;
@@ -439,7 +440,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       } catch {
         if (!cancelled) setSheetProcessing(false);
       }
-    }, 160);
+    }, 150);
 
     return () => {
       cancelled = true;
@@ -480,7 +481,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
           await videoRef.current.play();
           setWebcamActive(true);
 
-          // Draw 80% face oval overlay on webcam guide canvas
           const guideCanvas = webcamOverlayRef.current;
           if (guideCanvas) {
             guideCanvas.width = 550;
@@ -516,7 +516,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     const vw = video.videoWidth || 640;
     const vh = video.videoHeight || 480;
 
-    // Crop center 3.5:4.5 portrait frame from live webcam feed
     const targetAspect = 275 / 354;
     let cropW = vw;
     let cropH = Math.round(vw / targetAspect);
@@ -535,7 +534,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
     rCtx.save();
     if (facingMode === "user") {
-      // Un-mirror front camera so text/parting is natural
       rCtx.translate(550, 0);
       rCtx.scale(-1, 1);
     }
@@ -546,10 +544,10 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     const img = new Image();
     img.onload = async () => {
       setPhotoImage(img);
+      setUploadedPhotoName("Webcam Live Capture");
       setPhotoBrightness(webcamBrightnessBoost);
       setWhiteBgBoost(true);
 
-      // Immediately generate SSC 275x354 20KB-50KB 200 DPI JPG
       const sscCanvas = renderPassportPhotoCanvas(img, {
         widthPx: 275,
         heightPx: 354,
@@ -608,6 +606,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     try {
       const img = await loadImageFromFile(file);
       setPhotoImage(img);
+      setUploadedPhotoName(file.name);
       setPhotoZoom(1.0);
       setPhotoPanX(0);
       setPhotoPanY(0);
@@ -624,6 +623,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     try {
       const img = await loadImageFromFile(file);
       setSignImage(img);
+      setUploadedSignName(file.name);
       setSignZoom(1.0);
       setSignPanX(0);
       setSignPanY(0);
@@ -667,7 +667,6 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   };
 
-  // Format personalized official declaration text
   const getPersonalizedDeclarationText = (): string => {
     const raw =
       OFFICIAL_DECLARATIONS[declBankKey]?.text || OFFICIAL_DECLARATIONS.IBPS.text;
@@ -682,207 +681,190 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     setTimeout(() => setCopiedDecl(false), 2500);
   };
 
+  const TABS: {
+    id: ToolTabId;
+    title: string;
+    subtitle: string;
+    badge?: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    {
+      id: "photo",
+      title: "Passport Photo Maker",
+      subtitle: "Exact KB, Name & Date",
+      icon: ImageIcon
+    },
+    {
+      id: "signature",
+      title: "Sign, Thumb & Decl.",
+      subtitle: "White Paper Enhancer",
+      icon: PenTool
+    },
+    {
+      id: "pdf",
+      title: "PDF Size Reducer",
+      subtitle: "Marksheet & Aadhaar <100KB",
+      icon: FileText
+    },
+    {
+      id: "webcam",
+      title: "SSC Live Webcam",
+      subtitle: "80% Face Guide Studio",
+      icon: Camera
+    },
+    {
+      id: "printsheet",
+      title: "4×6 Print Sheet",
+      subtitle: "8 Photos for ₹10 Print",
+      badge: "Save ₹90",
+      icon: Printer
+    }
+  ];
+
   return (
-    <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-4">
-      {/* Top Exam & Portal Selector Pill Strip */}
-      <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-xl border border-slate-800 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-4 border-b border-slate-800">
-          <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-semibold mb-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              100% Client-Side • Zero Server Upload • True JFIF 200/300 DPI Header
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-              Select Exam or Identity Portal Specification
-            </h2>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-            <span className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 font-mono">
-              SOI: 0xFFD8FFE0
-            </span>
-            <span className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 font-mono">
-              JFIF Bytes 13-17: {dpi} DPI
-            </span>
-            <span className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 font-mono">
-              Target: {minKB}KB–{maxKB}KB
-            </span>
-          </div>
-        </div>
-
-        {/* Exam Preset Links / Buttons */}
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          {EXAMS.map((exam) => {
-            const isSelected = exam.slug === activeExam.slug;
-            return (
-              <button
-                key={exam.slug}
-                type="button"
-                onClick={() => {
-                  setSelectedExamSlug(exam.slug);
-                  if (exam.presets[0]) {
-                    applyPreset(exam.presets[0]);
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-5">
+      {/* Clean, Bright, Modern Exam & Document Selector Card */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          {/* Step 1: Select Exam Dropdown */}
+          <div className="lg:col-span-5">
+            <label
+              htmlFor="exam-selector"
+              className="block text-xs font-bold uppercase tracking-wider text-blue-600 mb-1.5"
+            >
+              1. Choose Exam or Portal Preset
+            </label>
+            <div className="relative">
+              <select
+                id="exam-selector"
+                value={selectedExamSlug}
+                onChange={(e) => {
+                  const nextSlug = e.target.value;
+                  setSelectedExamSlug(nextSlug);
+                  const found = EXAMS.find((ex) => ex.slug === nextSlug);
+                  if (found && found.presets[0]) {
+                    applyPreset(found.presets[0]);
                   }
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
-                  isSelected
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400"
-                    : "bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white"
-                }`}
+                className="w-full appearance-none px-4 py-2.5 pr-10 rounded-xl border-2 border-slate-200 hover:border-blue-400 focus:border-blue-600 focus:outline-none bg-slate-50/70 text-slate-900 font-bold text-sm transition cursor-pointer"
               >
-                {exam.shortName}
-              </button>
-            );
-          })}
-        </div>
+                {EXAMS.map((exam) => (
+                  <option key={exam.slug} value={exam.slug}>
+                    {exam.shortName} — {exam.conductingBody}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
 
-        {/* Sub-Presets for the active exam */}
-        <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-slate-400 mr-1">
-            {activeExam.shortName} Presets:
-          </span>
-          {activeExam.presets.map((preset) => {
-            const active = preset.id === selectedPresetId;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => applyPreset(preset)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
-                  active
-                    ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
-                    : "bg-slate-800/60 border-slate-700 text-slate-300 hover:border-slate-500"
-                }`}
-              >
-                <span>{preset.label}</span>
-                <span className="px-1.5 py-0.5 rounded bg-slate-900/80 text-[11px] font-mono text-emerald-300">
-                  {preset.minKB}-{preset.maxKB}KB • {preset.dpi}DPI
-                </span>
-              </button>
-            );
-          })}
+          {/* Step 2: Document Slot Pills for the Selected Exam */}
+          <div className="lg:col-span-7">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                2. Select Document Type ({activeExam.shortName})
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                {activeTab === "pdf"
+                  ? `Target: ${pdfMinKB}–${pdfMaxKB} KB PDF`
+                  : `${widthPx}×${heightPx} px • ${minKB}–${maxKB} KB • ${dpi} DPI`}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {activeExam.presets.map((preset) => {
+                const isSelected = preset.id === selectedPresetId;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                      isSelected
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50/40"
+                    }`}
+                  >
+                    <span>{preset.label}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                        isSelected
+                          ? "bg-blue-700 text-blue-100"
+                          : "bg-slate-200/80 text-slate-600"
+                      }`}
+                    >
+                      {preset.minKB}–{preset.maxKB} KB
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 5-Tab All-in-One Pain-Point Toggle Suite Navigation */}
+      {/* 5-Tab Segmented Navigation Bar */}
       <div
         role="tablist"
         aria-label="ExamDoc 5-in-1 Document Suite"
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "photo"}
-          onClick={() => setActiveTab("photo")}
-          className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
-            activeTab === "photo"
-              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40"
-          }`}
-        >
-          <ImageIcon className="w-5 h-5 shrink-0" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider opacity-80">
-              Tab 1
-            </div>
-            <div className="text-sm font-bold leading-tight">
-              Photo + Name/DOP
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "signature"}
-          onClick={() => setActiveTab("signature")}
-          className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
-            activeTab === "signature"
-              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40"
-          }`}
-        >
-          <PenTool className="w-5 h-5 shrink-0" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider opacity-80">
-              Tab 2
-            </div>
-            <div className="text-sm font-bold leading-tight">
-              Sign, Thumb & Decl.
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "pdf"}
-          onClick={() => setActiveTab("pdf")}
-          className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
-            activeTab === "pdf"
-              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40"
-          }`}
-        >
-          <FileText className="w-5 h-5 shrink-0" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider opacity-80">
-              Tab 3
-            </div>
-            <div className="text-sm font-bold leading-tight">
-              Marksheet PDF &lt;100KB
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "webcam"}
-          onClick={() => setActiveTab("webcam")}
-          className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
-            activeTab === "webcam"
-              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40"
-          }`}
-        >
-          <Camera className="w-5 h-5 shrink-0" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider opacity-80">
-              Tab 4
-            </div>
-            <div className="text-sm font-bold leading-tight">
-              SSC Live Webcam
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "printsheet"}
-          onClick={() => setActiveTab("printsheet")}
-          className={`col-span-2 sm:col-span-1 flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
-            activeTab === "printsheet"
-              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20"
-              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40"
-          }`}
-        >
-          <Printer className="w-5 h-5 shrink-0" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider opacity-80">
-              Tab 5
-            </div>
-            <div className="text-sm font-bold leading-tight">
-              4×6 Print Sheet (₹10)
-            </div>
-          </div>
-        </button>
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(t.id)}
+              className={`relative flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                isActive
+                  ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white border-blue-600 shadow-md shadow-blue-600/20 scale-[1.01]"
+                  : "bg-white text-slate-700 border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/30"
+              }`}
+            >
+              {t.badge && (
+                <span
+                  className={`absolute -top-2 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shadow-2xs ${
+                    isActive
+                      ? "bg-amber-300 text-slate-950"
+                      : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  }`}
+                >
+                  {t.badge}
+                </span>
+              )}
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isActive
+                    ? "bg-white/20 text-white"
+                    : "bg-blue-50 text-blue-600"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold leading-snug truncate">
+                  {t.title}
+                </div>
+                <div
+                  className={`text-[11px] truncate ${
+                    isActive ? "text-blue-100" : "text-slate-500"
+                  }`}
+                >
+                  {t.subtitle}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {errorMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between">
+        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
@@ -901,101 +883,37 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "photo" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Controls Column (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Passport Photo Resizer, Name &amp; Date (DOP) + 80% Face Guide
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Converts WhatsApp WebP, PNG, HEIC &amp; JPG into baseline 0xFFD8FFE0 JPG with injected JFIF DPI.
-                </p>
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-5">
+            {/* Prominent Upload Dropzone Banner */}
+            <label className="group cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-blue-50/70 hover:border-blue-500 hover:bg-blue-50 transition">
+              <div className="flex items-center gap-3.5 text-center sm:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/25 group-hover:scale-105 transition shrink-0">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                    Click to Upload Your Passport Photo
+                  </div>
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    Supports WhatsApp Images, JPG, PNG, WebP &amp; HEIC • Active:{" "}
+                    <span className="font-semibold text-blue-700">{uploadedPhotoName}</span>
+                  </div>
+                </div>
               </div>
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition">
-                <Upload className="w-4 h-4" />
-                <span>Upload Photo</span>
-                <input
-                  type="file"
-                  accept="image/*,.webp,.png,.jpg,.jpeg,.heic"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
+              <span className="px-4 py-2 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-xs shrink-0 transition">
+                Browse Photo
+              </span>
+              <input
+                type="file"
+                accept="image/*,.webp,.png,.jpg,.jpeg,.heic"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+            </label>
 
-            {/* Exact Pixel, KB & DPI Controls */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                  Width (px)
-                </label>
-                <input
-                  type="number"
-                  min={50}
-                  max={2400}
-                  value={widthPx}
-                  onChange={(e) => setWidthPx(Number(e.target.value) || 275)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-mono font-semibold text-slate-900 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                  Height (px)
-                </label>
-                <input
-                  type="number"
-                  min={50}
-                  max={2400}
-                  value={heightPx}
-                  onChange={(e) => setHeightPx(Number(e.target.value) || 354)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-mono font-semibold text-slate-900 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                  Min KB
-                </label>
-                <input
-                  type="number"
-                  min={4}
-                  max={500}
-                  value={minKB}
-                  onChange={(e) => setMinKB(Number(e.target.value) || 20)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-mono font-semibold text-slate-900 bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                  Max KB
-                </label>
-                <input
-                  type="number"
-                  min={10}
-                  max={1000}
-                  value={maxKB}
-                  onChange={(e) => setMaxKB(Number(e.target.value) || 50)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-mono font-semibold text-slate-900 bg-white"
-                />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                  JFIF Header DPI
-                </label>
-                <select
-                  value={dpi}
-                  onChange={(e) => setDpi(Number(e.target.value) as 200 | 300 | 600)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-mono font-semibold text-slate-900 bg-white"
-                >
-                  <option value={200}>200 DPI</option>
-                  <option value={300}>300 DPI</option>
-                  <option value={600}>600 DPI</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Name & Date of Photo (DOP) White Plaque Toggle Box */}
-            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Name & Date of Photo (DOP) White Plaque Card */}
+            <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3.5">
+              <div className="flex items-center justify-between gap-2">
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1004,18 +922,18 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-sm font-bold text-slate-900">
-                    Add Name &amp; Date of Photo (DOP) Bottom White Plaque
+                    Print Candidate Name &amp; Date of Photo (DOP) on Bottom
                   </span>
                 </label>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                  UPSC / SSC / NEET / State PSC
+                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                  SSC / UPSC / NEET
                 </span>
               </div>
 
               {showNameDop && (
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
                   <div className="sm:col-span-5">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
                       Candidate Full Name
                     </label>
                     <input
@@ -1023,12 +941,12 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       value={candidateName}
                       onChange={(e) => setCandidateName(e.target.value)}
                       placeholder="e.g. AARAV SHARMA"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold uppercase bg-white"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:outline-none text-sm font-bold uppercase bg-white"
                     />
                   </div>
                   <div className="sm:col-span-4">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Date of Photo (DD-MM-YYYY)
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Date of Photo
                     </label>
                     <div className="flex gap-1.5">
                       <input
@@ -1036,39 +954,38 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                         value={dateOfPhoto}
                         onChange={(e) => setDateOfPhoto(e.target.value)}
                         placeholder="18-11-2026"
-                        className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-mono font-semibold bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:outline-none text-sm font-semibold bg-white"
                       />
                       <button
                         type="button"
                         onClick={() => setDateOfPhoto(getTodayFormattedDDMMYYYY())}
-                        className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold shrink-0"
-                        title="Set to Today's Date"
+                        className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold shrink-0"
                       >
                         Today
                       </button>
                     </div>
                   </div>
                   <div className="sm:col-span-3">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Date Prefix
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Label Style
                     </label>
                     <select
                       value={dopPrefix}
                       onChange={(e) => setDopPrefix(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold bg-white"
                     >
-                      <option value="DOP:">DOP: 18-11-2026</option>
-                      <option value="">18-11-2026 (No Prefix)</option>
-                      <option value="DATE:">DATE: 18-11-2026</option>
+                      <option value="DOP:">DOP: Date</option>
+                      <option value="">Date Only</option>
+                      <option value="DATE:">DATE: Date</option>
                     </select>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* 80% Face Guide & Studio Lighting Sliders */}
+            {/* Face Position, Zoom & Background Controls */}
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1076,8 +993,8 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     onChange={(e) => setShow80FaceGuide(e.target.checked)}
                     className="w-4 h-4 rounded text-emerald-600"
                   />
-                  <span className="text-xs sm:text-sm font-semibold text-slate-800">
-                    Show 80% Face Coverage Oval Guide (Preview Only)
+                  <span className="text-xs sm:text-sm font-semibold text-slate-700">
+                    Show 80% Face Alignment Oval (Preview Guide)
                   </span>
                 </label>
 
@@ -1088,17 +1005,17 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     onChange={(e) => setWhiteBgBoost(e.target.checked)}
                     className="w-4 h-4 rounded text-blue-600"
                   />
-                  <span className="text-xs sm:text-sm font-semibold text-slate-800">
-                    Plain Wall White Background Boost
+                  <span className="text-xs sm:text-sm font-semibold text-slate-700">
+                    Auto-Brighten Plain Wall Background
                   </span>
                 </label>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80">
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Face Zoom</span>
-                    <span>{Math.round(photoZoom * 100)}%</span>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1.5">
+                    <span>Zoom Face</span>
+                    <span className="text-blue-600 font-bold">{Math.round(photoZoom * 100)}%</span>
                   </div>
                   <input
                     type="range"
@@ -1112,9 +1029,9 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Horizontal Pan (X)</span>
-                    <span>{photoPanX}</span>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1.5">
+                    <span>Move Left / Right</span>
+                    <span className="text-slate-500">{photoPanX}</span>
                   </div>
                   <input
                     type="range"
@@ -1128,9 +1045,9 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Vertical Pan (Y)</span>
-                    <span>{photoPanY}</span>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1.5">
+                    <span>Move Up / Down</span>
+                    <span className="text-slate-500">{photoPanY}</span>
                   </div>
                   <input
                     type="range"
@@ -1142,13 +1059,13 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     className="w-full accent-blue-600"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1.5">
                     <span>Brightness</span>
-                    <span>{photoBrightness > 0 ? `+${photoBrightness}` : photoBrightness}</span>
+                    <span className="text-slate-500">
+                      {photoBrightness > 0 ? `+${photoBrightness}` : photoBrightness}
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -1162,9 +1079,11 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1.5">
                     <span>Contrast</span>
-                    <span>{photoContrast > 0 ? `+${photoContrast}` : photoContrast}</span>
+                    <span className="text-slate-500">
+                      {photoContrast > 0 ? `+${photoContrast}` : photoContrast}
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -1181,10 +1100,10 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   <button
                     type="button"
                     onClick={() => setPhotoRotation((r) => (r + 90) % 360)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
-                    Rotate 90°
+                    Rotate
                   </button>
                   <button
                     type="button"
@@ -1196,51 +1115,174 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       setPhotoBrightness(6);
                       setPhotoContrast(8);
                     }}
-                    className="px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700"
+                    className="px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700"
                   >
                     Reset
                   </button>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Right Live Preview & True Binary Inspector Column (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col items-center">
-            <div className="w-full flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Live Alignment Preview ({widthPx}×{heightPx} px)
-              </span>
-              {photoProcessing ? (
-                <span className="text-xs font-semibold text-blue-600 flex items-center gap-1">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Packing Binary...
+            {/* Collapsible Custom Pixel / KB / DPI Override */}
+            <div className="border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowCustomSpec((v) => !v)}
+                className="flex items-center justify-between w-full text-xs font-bold text-slate-500 hover:text-slate-800 py-1"
+              >
+                <span>
+                  Custom Dimensions &amp; DPI Settings (Currently: {widthPx}×{heightPx} px, {minKB}–{maxKB} KB, {dpi} DPI)
                 </span>
-              ) : (
-                <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Ready to Upload
-                </span>
+                {showCustomSpec ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+
+              {showCustomSpec && (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      Width (px)
+                    </label>
+                    <input
+                      type="number"
+                      min={50}
+                      max={2400}
+                      value={widthPx}
+                      onChange={(e) => setWidthPx(Number(e.target.value) || 275)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      Height (px)
+                    </label>
+                    <input
+                      type="number"
+                      min={50}
+                      max={2400}
+                      value={heightPx}
+                      onChange={(e) => setHeightPx(Number(e.target.value) || 354)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      Min KB
+                    </label>
+                    <input
+                      type="number"
+                      min={4}
+                      max={500}
+                      value={minKB}
+                      onChange={(e) => setMinKB(Number(e.target.value) || 20)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      Max KB
+                    </label>
+                    <input
+                      type="number"
+                      min={10}
+                      max={1000}
+                      value={maxKB}
+                      onChange={(e) => setMaxKB(Number(e.target.value) || 50)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      DPI
+                    </label>
+                    <select
+                      value={dpi}
+                      onChange={(e) => setDpi(Number(e.target.value) as 200 | 300 | 600)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white"
+                    >
+                      <option value={200}>200 DPI</option>
+                      <option value={300}>300 DPI</option>
+                      <option value={600}>600 DPI</option>
+                    </select>
+                  </div>
+                </div>
               )}
             </div>
+          </div>
 
-            {/* Canvas Container */}
-            <div className="relative bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl p-3 flex items-center justify-center w-full min-h-[290px]">
+          {/* Right Live Preview & Instant Download Card (5 cols) */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col items-center">
+            <div className="w-full flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Live Output Preview
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {widthPx} × {heightPx} px • {dpi} DPI Standard JPG
+                </p>
+              </div>
+              {photoProcessing ? (
+                <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Optimizing...
+                </span>
+              ) : packedPhoto ? (
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  {packedPhoto.report.sizeKB} KB Ready
+                </span>
+              ) : null}
+            </div>
+
+            {/* Clean Studio Canvas Backdrop */}
+            <div className="relative bg-gradient-to-b from-slate-50 to-slate-100/80 border border-slate-200 rounded-2xl p-4 flex items-center justify-center w-full min-h-[290px]">
               <canvas
                 ref={photoPreviewCanvasRef}
-                className="max-h-[320px] w-auto rounded shadow-md bg-white"
+                className="max-h-[300px] w-auto rounded-lg shadow-md bg-white border border-slate-200"
               />
             </div>
 
             {show80FaceGuide && (
-              <p className="mt-2 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 text-center w-full">
-                Green 80% Face Oval is for alignment only — it is <strong>not</strong> printed on your downloaded JPG.
+              <p className="mt-2.5 text-[11px] text-slate-500 text-center">
+                Note: The green 80% oval guide is for your alignment only and will{" "}
+                <strong className="text-slate-700">not</strong> appear on the downloaded photo.
               </p>
             )}
 
             {/* Download & Action Buttons */}
             {packedPhoto && (
               <div className="w-full mt-4 space-y-3">
+                {/* Summary Spec Pills */}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      File Size
+                    </div>
+                    <div className="text-sm font-extrabold text-emerald-600">
+                      {packedPhoto.report.sizeKB} KB
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Dimensions
+                    </div>
+                    <div className="text-sm font-extrabold text-slate-800">
+                      {packedPhoto.report.widthPx}×{packedPhoto.report.heightPx}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Resolution
+                    </div>
+                    <div className="text-sm font-extrabold text-blue-600">
+                      {packedPhoto.report.dpiX} DPI
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() =>
@@ -1251,11 +1293,11 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       )}kb.jpg`
                     )
                   }
-                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition"
+                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
                 >
                   <Download className="w-5 h-5" />
                   <span>
-                    Download Verified JPG ({packedPhoto.report.sizeKB} KB • {packedPhoto.report.dpiX} DPI)
+                    Download Ready Photo ({packedPhoto.report.sizeKB} KB)
                   </span>
                 </button>
 
@@ -1263,60 +1305,61 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   <button
                     type="button"
                     onClick={() => setActiveTab("printsheet")}
-                    className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
                   >
-                    <Printer className="w-3.5 h-3.5" />
+                    <Printer className="w-3.5 h-3.5 text-blue-600" />
                     8 Photos on 4×6 Sheet
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("webcam")}
-                    className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5"
+                    onClick={() => setActiveTab("signature")}
+                    className="py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
                   >
-                    <Camera className="w-3.5 h-3.5" />
-                    Use Live Webcam
+                    <PenTool className="w-3.5 h-3.5 text-blue-600" />
+                    Next: Resize Signature
                   </button>
                 </div>
 
-                {/* True Binary JFIF Verification Inspector */}
-                <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 text-xs font-mono space-y-1.5 border border-slate-800">
-                  <div className="flex items-center justify-between text-emerald-400 font-sans font-bold text-xs pb-1 border-b border-slate-800">
+                {/* Clean Collapsible Portal Verification Badge */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowBinaryDetails((v) => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-emerald-800 text-xs font-semibold"
+                  >
                     <span className="flex items-center gap-1.5">
-                      <Binary className="w-3.5 h-3.5" />
-                      TRUE BINARY COMPLIANCE REPORT
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      100% Verified for {activeExam.conductingBody} Portal
                     </span>
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">
-                      PASSED
+                    <span className="underline text-[11px]">
+                      {showBinaryDetails ? "Hide Details" : "Inspect Header"}
                     </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Exact File Size:</span>
-                    <span className="text-white font-bold">
-                      {packedPhoto.report.sizeKB} KB ({packedPhoto.report.byteLength.toLocaleString()} bytes)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Allowed Exam Window:</span>
-                    <span className="text-emerald-300">
-                      {packedPhoto.report.minKB} KB – {packedPhoto.report.maxKB} KB
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">SOI + APP0 Magic:</span>
-                    <span className="text-amber-300">0x{packedPhoto.report.magicHex} (Baseline JPG)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">JFIF Bytes 13..17:</span>
-                    <span className="text-cyan-300">
-                      {packedPhoto.report.jfifBytes13To17Hex} ({packedPhoto.report.dpiX}×{packedPhoto.report.dpiY} DPI)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">EOI Marker &amp; Padding:</span>
-                    <span className="text-slate-300">
-                      0x{packedPhoto.report.eoiHex} (+{packedPhoto.report.paddedBytes} pad bytes)
-                    </span>
-                  </div>
+                  </button>
+
+                  {showBinaryDetails && (
+                    <div className="mt-2 p-3 rounded-xl bg-slate-900 text-slate-200 text-[11px] font-mono space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Exact Bytes:</span>
+                        <span>{packedPhoto.report.byteLength.toLocaleString()} bytes</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Allowed Window:</span>
+                        <span className="text-emerald-300">
+                          {packedPhoto.report.minKB}–{packedPhoto.report.maxKB} KB
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">JPEG Header:</span>
+                        <span className="text-amber-300">0x{packedPhoto.report.magicHex}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">JFIF DPI Bytes 13..17:</span>
+                        <span className="text-cyan-300">
+                          {packedPhoto.report.jfifBytes13To17Hex} ({packedPhoto.report.dpiX} DPI)
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1328,126 +1371,137 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "signature" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Controls Column (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Signature, Left Thumb &amp; Declaration Adaptive Paper Whitener
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Adaptive luminance thresholding turns dark/gray mobile notebook paper into pure #FFFFFF white while sharpening ink.
-                </p>
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-5">
+            {/* Upload Dropzone */}
+            <label className="group cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-blue-50/70 hover:border-blue-500 hover:bg-blue-50 transition">
+              <div className="flex items-center gap-3.5 text-center sm:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/25 group-hover:scale-105 transition shrink-0">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                    Upload Signature, Left Thumb or Declaration Photo
+                  </div>
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    Automatically turns gray mobile camera paper into pure white • Active:{" "}
+                    <span className="font-semibold text-blue-700">{uploadedSignName}</span>
+                  </div>
+                </div>
               </div>
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition">
-                <Upload className="w-4 h-4" />
-                <span>Upload Sign / Thumb / Decl.</span>
-                <input
-                  type="file"
-                  accept="image/*,.webp,.png,.jpg,.jpeg"
-                  onChange={handleSignatureUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
+              <span className="px-4 py-2 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shrink-0 transition">
+                Browse Image
+              </span>
+              <input
+                type="file"
+                accept="image/*,.webp,.png,.jpg,.jpeg"
+                onChange={handleSignatureUpload}
+                className="hidden"
+              />
+            </label>
 
             {/* Quick Document Type Pills */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                {
-                  label: "SSC / NEET Sign (315×157, 10-20KB)",
-                  w: 315,
-                  h: 157,
-                  min: 10,
-                  max: 20,
-                  d: 200 as const
-                },
-                {
-                  label: "IBPS / SBI Sign (140×60, 10-20KB)",
-                  w: 140,
-                  h: 60,
-                  min: 10,
-                  max: 20,
-                  d: 200 as const
-                },
-                {
-                  label: "IBPS / SBI Left Thumb (240×240, 20-50KB)",
-                  w: 240,
-                  h: 240,
-                  min: 20,
-                  max: 50,
-                  d: 200 as const
-                },
-                {
-                  label: "IBPS / SBI Declaration (800×400, 50-100KB)",
-                  w: 800,
-                  h: 400,
-                  min: 50,
-                  max: 100,
-                  d: 200 as const
-                },
-                {
-                  label: "UPSC Square Sign (500×500, 25-250KB)",
-                  w: 500,
-                  h: 500,
-                  min: 25,
-                  max: 250,
-                  d: 300 as const
-                },
-                {
-                  label: "UTI / NSDL PAN Sign (400×200, 12-45KB, 300 DPI)",
-                  w: 400,
-                  h: 200,
-                  min: 12,
-                  max: 45,
-                  d: 300 as const
-                },
-                {
-                  label: "RRB Railway Sign (315×157, 32-68KB)",
-                  w: 315,
-                  h: 157,
-                  min: 32,
-                  max: 68,
-                  d: 200 as const
-                }
-              ].map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => {
-                    setWidthPx(p.w);
-                    setHeightPx(p.h);
-                    setMinKB(p.min);
-                    setMaxKB(p.max);
-                    setDpi(p.d);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                    widthPx === p.w && heightPx === p.h && minKB === p.min
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-400"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Select Target Size Preset
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    label: "SSC / NEET Sign (10–20 KB)",
+                    w: 315,
+                    h: 157,
+                    min: 10,
+                    max: 20,
+                    d: 200 as const
+                  },
+                  {
+                    label: "IBPS / SBI Sign (140×60, 10–20 KB)",
+                    w: 140,
+                    h: 60,
+                    min: 10,
+                    max: 20,
+                    d: 200 as const
+                  },
+                  {
+                    label: "IBPS Left Thumb (240×240, 20–50 KB)",
+                    w: 240,
+                    h: 240,
+                    min: 20,
+                    max: 50,
+                    d: 200 as const
+                  },
+                  {
+                    label: "IBPS / SBI Declaration (800×400, 50–100 KB)",
+                    w: 800,
+                    h: 400,
+                    min: 50,
+                    max: 100,
+                    d: 200 as const
+                  },
+                  {
+                    label: "UPSC Square Sign (500×500, 25–250 KB)",
+                    w: 500,
+                    h: 500,
+                    min: 25,
+                    max: 250,
+                    d: 300 as const
+                  },
+                  {
+                    label: "PAN Card Sign (400×200, 600 DPI)",
+                    w: 400,
+                    h: 200,
+                    min: 12,
+                    max: 45,
+                    d: 600 as const
+                  },
+                  {
+                    label: "Railway RRB Sign (30–70 KB)",
+                    w: 315,
+                    h: 157,
+                    min: 32,
+                    max: 68,
+                    d: 200 as const
+                  }
+                ].map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setWidthPx(p.w);
+                      setHeightPx(p.h);
+                      setMinKB(p.min);
+                      setMaxKB(p.max);
+                      setDpi(p.d);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                      widthPx === p.w && heightPx === p.h && minKB === p.min
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-400"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Adaptive Luminance Thresholding Controls */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+            {/* Paper Whitening & Ink Sharpness Controls */}
+            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-blue-600" />
-                  Adaptive Luminance Paper Bleaching &amp; Ink Booster
+                  <Wand2 className="w-4 h-4 text-blue-600" />
+                  Paper Whitener &amp; Ink Enhancer
                 </span>
-                <span className="text-xs font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-semibold">
-                  Paper → #FFFFFF
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                  Removes Phone Shadows
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Gray Paper Bleaching Strength</span>
-                    <span>{adaptiveThreshold}%</span>
+                    <span>Paper Whitening Strength</span>
+                    <span className="text-blue-600 font-bold">{adaptiveThreshold}%</span>
                   </div>
                   <input
                     type="range"
@@ -1458,15 +1512,12 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     onChange={(e) => setAdaptiveThreshold(Number(e.target.value))}
                     className="w-full accent-blue-600"
                   />
-                  <span className="text-[11px] text-slate-500">
-                    Higher values remove deeper mobile camera shadows &amp; ruled lines.
-                  </span>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Ink Stroke Sharpness &amp; Thickness</span>
-                    <span>{inkSharpness}%</span>
+                    <span>Ink Darkness &amp; Sharpness</span>
+                    <span className="text-blue-600 font-bold">{inkSharpness}%</span>
                   </div>
                   <input
                     type="range"
@@ -1477,25 +1528,22 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     onChange={(e) => setInkSharpness(Number(e.target.value))}
                     className="w-full accent-blue-600"
                   />
-                  <span className="text-[11px] text-slate-500">
-                    Keeps fine cursive strokes legible at 140×60 px or 800×400 px.
-                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                 {(
                   [
-                    { id: "natural", label: "Natural Pen Ink (Auto Blue/Black)" },
-                    { id: "black", label: "Force Jet-Black Ink (#000000)" },
-                    { id: "blue", label: "Royal Blue Ink / Stamp Pad" }
+                    { id: "natural", label: "Original Pen Color" },
+                    { id: "black", label: "Pure Black Ink" },
+                    { id: "blue", label: "Royal Blue Ink" }
                   ] as const
                 ).map((mode) => (
                   <button
                     key={mode.id}
                     type="button"
                     onClick={() => setInkMode(mode.id)}
-                    className={`py-2 px-3 rounded-lg text-xs font-semibold border transition ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
                       inkMode === mode.id
                         ? "bg-slate-900 text-white border-slate-900"
                         : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
@@ -1506,11 +1554,10 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 ))}
               </div>
 
-              {/* Zoom & Rotate for Signature */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200">
                 <div>
                   <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Zoom Scale</span>
+                    <span>Zoom</span>
                     <span>{Math.round(signZoom * 100)}%</span>
                   </div>
                   <input
@@ -1525,7 +1572,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 </div>
                 <div>
                   <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                    <span>Pan Horizontal / Vertical</span>
+                    <span>Move Position</span>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -1550,7 +1597,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   <button
                     type="button"
                     onClick={() => setSignRotation((r) => (r + 90) % 360)}
-                    className="flex-1 py-1.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1"
+                    className="flex-1 py-1.5 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 flex items-center justify-center gap-1"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
                     Rotate 90°
@@ -1560,14 +1607,14 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
             </div>
 
             {/* Official Copyable IBPS / SBI / RBI Hand-Written Declaration Box */}
-            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-3">
+            <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50/50 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">
-                    Official Copyable Hand-Written Declaration Text (IBPS / SBI / RBI)
+                    Official Hand-Written Declaration Text (IBPS / SBI / RBI)
                   </h4>
                   <p className="text-xs text-slate-600">
-                    Write this text neatly in English with black ink on white paper (never in ALL CAPS).
+                    Write this text neatly in English with a black pen on white paper.
                   </p>
                 </div>
                 <div className="flex gap-1.5">
@@ -1576,7 +1623,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       key={key}
                       type="button"
                       onClick={() => setDeclBankKey(key)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
                         declBankKey === key
                           ? "bg-amber-600 text-white"
                           : "bg-white text-slate-700 border border-amber-300"
@@ -1594,7 +1641,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   value={declCandidateName}
                   onChange={(e) => setDeclCandidateName(e.target.value)}
                   placeholder="Enter Your Full Name"
-                  className="px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-xl border border-amber-300 bg-white text-xs font-semibold"
                 />
                 {declBankKey === "SBI" && (
                   <input
@@ -1602,33 +1649,33 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     value={declDob}
                     onChange={(e) => setDeclDob(e.target.value)}
                     placeholder="Date of Birth (DD/MM/YYYY)"
-                    className="px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-xs font-semibold"
+                    className="px-3 py-1.5 rounded-xl border border-amber-300 bg-white text-xs font-semibold"
                   />
                 )}
               </div>
 
-              <div className="p-3 rounded-lg bg-white border border-amber-200 text-xs sm:text-sm font-serif text-slate-800 leading-relaxed select-all">
+              <div className="p-3 rounded-xl bg-white border border-amber-200 text-xs sm:text-sm font-serif text-slate-800 leading-relaxed select-all">
                 &ldquo;{getPersonalizedDeclarationText()}&rdquo;
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-amber-800 font-medium">
-                  Required Spec: 800×400 px (10×5 cm) • 50KB to 100KB • 200 DPI JPG
+                <span className="text-[11px] text-amber-800 font-semibold">
+                  Required Size: 800×400 px • 50–100 KB • 200 DPI
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyDeclaration}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition"
                 >
                   {copiedDecl ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      Copied Text!
+                      Copied!
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      Copy Official Text
+                      Copy Text
                     </>
                   )}
                 </button>
@@ -1636,28 +1683,33 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
             </div>
           </div>
 
-          {/* Right Signature Preview & Binary Report Column (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col items-center">
+          {/* Right Signature Preview & Download Column (5 cols) */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col items-center">
             <div className="w-full flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Pure #FFFFFF Thresholded Output ({widthPx}×{heightPx} px)
-              </span>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Whitened Output Preview
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {widthPx} × {heightPx} px • Pure White Background
+                </p>
+              </div>
               {signProcessing ? (
-                <span className="text-xs font-semibold text-blue-600">Processing...</span>
-              ) : (
-                <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Shadow Removed
+                <span className="text-xs font-bold text-blue-600">Cleaning...</span>
+              ) : packedSign ? (
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  {packedSign.report.sizeKB} KB Ready
                 </span>
-              )}
+              ) : null}
             </div>
 
-            <div className="w-full min-h-[220px] bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl p-4 flex items-center justify-center">
+            <div className="w-full min-h-[220px] bg-gradient-to-b from-slate-50 to-slate-100/80 border border-slate-200 rounded-2xl p-4 flex items-center justify-center">
               {packedSign ? (
                 <img
                   src={packedSign.dataUrl}
                   alt="Processed Signature or Declaration Preview"
-                  className="max-h-[240px] w-auto rounded shadow bg-white border border-slate-200"
+                  className="max-h-[220px] w-auto rounded-lg shadow-md bg-white border border-slate-200"
                 />
               ) : (
                 <span className="text-xs text-slate-400">Upload a signature image to preview</span>
@@ -1666,6 +1718,33 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
             {packedSign && (
               <div className="w-full mt-4 space-y-3">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      File Size
+                    </div>
+                    <div className="text-sm font-extrabold text-emerald-600">
+                      {packedSign.report.sizeKB} KB
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Dimensions
+                    </div>
+                    <div className="text-sm font-extrabold text-slate-800">
+                      {packedSign.report.widthPx}×{packedSign.report.heightPx}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Resolution
+                    </div>
+                    <div className="text-sm font-extrabold text-blue-600">
+                      {packedSign.report.dpiX} DPI
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() =>
@@ -1676,44 +1755,13 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       )}kb.jpg`
                     )
                   }
-                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition"
+                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
                 >
                   <Download className="w-5 h-5" />
                   <span>
-                    Download Verified JPG ({packedSign.report.sizeKB} KB • {packedSign.report.dpiX} DPI)
+                    Download Ready Signature ({packedSign.report.sizeKB} KB)
                   </span>
                 </button>
-
-                <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 text-xs font-mono space-y-1.5">
-                  <div className="flex items-center justify-between text-emerald-400 font-sans font-bold text-xs pb-1 border-b border-slate-800">
-                    <span>BINARY SIGNATURE REPORT</span>
-                    <span>{packedSign.report.withinRange ? "100% COMPLIANT" : "ADJUSTING"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Output Dimensions:</span>
-                    <span className="text-white">
-                      {packedSign.report.widthPx} × {packedSign.report.heightPx} px
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Exact Size:</span>
-                    <span className="text-emerald-300 font-bold">
-                      {packedSign.report.sizeKB} KB ({packedSign.report.byteLength.toLocaleString()} bytes)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">JFIF Bytes 13..17:</span>
-                    <span className="text-cyan-300">
-                      {packedSign.report.jfifBytes13To17Hex} ({packedSign.report.dpiX} DPI)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Safe EOI Padding:</span>
-                    <span className="text-amber-300">
-                      +{packedSign.report.paddedBytes} bytes before 0xFFD9
-                    </span>
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -1724,82 +1772,91 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "pdf" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left PDF Builder Controls (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Marksheet, Caste Certificate &amp; Aadhaar PDF Packer (&lt;100KB / &lt;300KB)
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Combine 1 to 5 images (e.g., Aadhaar Front + Back or 10th/12th Marksheets) into a single pure DCTDecode PDF-1.4.
-                </p>
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-5">
+            <label className="group cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-blue-50/70 hover:border-blue-500 hover:bg-blue-50 transition">
+              <div className="flex items-center gap-3.5 text-center sm:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/25 group-hover:scale-105 transition shrink-0">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                    Add Marksheet, Certificate or Aadhaar Photos (1–5 Pages)
+                  </div>
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    Combines &amp; compresses images into a single crystal-clear PDF strictly under 100KB, 200KB, or 300KB
+                  </div>
+                </div>
               </div>
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition">
-                <Upload className="w-4 h-4" />
-                <span>Add Images (1–5)</span>
-                <input
-                  type="file"
-                  accept="image/*,.webp,.png,.jpg,.jpeg"
-                  multiple
-                  onChange={handlePdfImagesUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
+              <span className="px-4 py-2 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shrink-0 transition">
+                Add Pages
+              </span>
+              <input
+                type="file"
+                accept="image/*,.webp,.png,.jpg,.jpeg"
+                multiple
+                onChange={handlePdfImagesUpload}
+                className="hidden"
+              />
+            </label>
 
             {/* Target PDF KB Budget Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {[
-                {
-                  title: "Strict < 100 KB PDF",
-                  desc: "50KB – 95KB (Aadhaar / Domicile / Caste)",
-                  min: 50,
-                  max: 95
-                },
-                {
-                  title: "Strict < 200 KB PDF",
-                  desc: "100KB – 190KB (10th / 12th Marksheet)",
-                  min: 100,
-                  max: 190
-                },
-                {
-                  title: "Strict < 300 KB PDF",
-                  desc: "150KB – 285KB (UPSC ID / NSDL PAN / Degree)",
-                  min: 150,
-                  max: 285
-                }
-              ].map((b) => {
-                const active = pdfMaxKB === b.max;
-                return (
-                  <button
-                    key={b.title}
-                    type="button"
-                    onClick={() => {
-                      setPdfMinKB(b.min);
-                      setPdfMaxKB(b.max);
-                    }}
-                    className={`p-3 rounded-xl border text-left transition ${
-                      active
-                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                        : "bg-slate-50 text-slate-800 border-slate-200 hover:border-blue-400"
-                    }`}
-                  >
-                    <div className="text-sm font-bold">{b.title}</div>
-                    <div
-                      className={`text-[11px] mt-0.5 ${
-                        active ? "text-blue-100" : "text-slate-500"
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Choose Maximum PDF Size Limit
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  {
+                    title: "Under 100 KB",
+                    desc: "50–95 KB (Aadhaar / Caste / Domicile)",
+                    min: 50,
+                    max: 95
+                  },
+                  {
+                    title: "Under 200 KB",
+                    desc: "100–190 KB (10th / 12th Marksheet)",
+                    min: 100,
+                    max: 190
+                  },
+                  {
+                    title: "Under 300 KB",
+                    desc: "150–285 KB (UPSC ID / PAN / Degree)",
+                    min: 150,
+                    max: 285
+                  }
+                ].map((b) => {
+                  const active = pdfMaxKB === b.max;
+                  return (
+                    <button
+                      key={b.title}
+                      type="button"
+                      onClick={() => {
+                        setPdfMinKB(b.min);
+                        setPdfMaxKB(b.max);
+                      }}
+                      className={`p-3.5 rounded-2xl border text-left transition ${
+                        active
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                          : "bg-slate-50 text-slate-800 border-slate-200 hover:border-blue-400"
                       }`}
                     >
-                      {b.desc}
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="text-sm font-extrabold">{b.title}</div>
+                      <div
+                        className={`text-[11px] mt-0.5 ${
+                          active ? "text-blue-100" : "text-slate-500"
+                        }`}
+                      >
+                        {b.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Layout & Contrast Toggles */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <label className="flex items-start gap-2 cursor-pointer">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50/80 border border-slate-200">
+              <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={mergeFrontBackSinglePage}
@@ -1808,15 +1865,15 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-800">
-                    Aadhaar Front+Back on 1 Page
+                    Front + Back on 1 Page
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    Stacks 2 images Top &amp; Bottom on a single A4 page.
+                    Stacks 2 images on a single A4 page.
                   </div>
                 </div>
               </label>
 
-              <label className="flex items-start gap-2 cursor-pointer">
+              <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={enhancePdfContrast}
@@ -1825,15 +1882,15 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-800">
-                    Marksheet Text Contrast Boost
+                    Sharpen Small Text
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    Keeps roll numbers &amp; QR codes sharp under 100KB.
+                    Keeps roll numbers clear under 100KB.
                   </div>
                 </div>
               </label>
 
-              <label className="flex items-start gap-2 cursor-pointer">
+              <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={pdfGrayscale}
@@ -1842,28 +1899,28 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-800">
-                    Black &amp; White Scan Mode
+                    Black &amp; White Scan
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    Saves 35% file size for multi-page certificates.
+                    Saves space for multi-page files.
                   </div>
                 </div>
               </label>
             </div>
 
-            {/* Uploaded Pages List (1 to 5) */}
+            {/* Uploaded Pages List */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Document Pages ({pdfPages.length} / 5 Maximum)
+                  Selected Pages ({pdfPages.length} / 5)
                 </span>
                 {pdfPages.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setPdfPages([])}
-                    className="text-xs text-red-600 hover:underline font-semibold"
+                    className="text-xs text-red-600 hover:underline font-bold"
                   >
-                    Clear All Pages
+                    Clear All
                   </button>
                 )}
               </div>
@@ -1871,7 +1928,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
               {pdfPages.map((page, index) => (
                 <div
                   key={page.id}
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs"
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white"
                 >
                   <div className="flex items-center gap-3">
                     <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center">
@@ -1880,15 +1937,14 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     <img
                       src={page.image.src}
                       alt={page.name}
-                      className="w-12 h-12 object-cover rounded border border-slate-200"
+                      className="w-12 h-12 object-cover rounded-lg border border-slate-200"
                     />
                     <div>
-                      <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate max-w-[180px] sm:max-w-[260px]">
+                      <div className="text-xs sm:text-sm font-bold text-slate-800 truncate max-w-[180px] sm:max-w-[260px]">
                         {page.name}
                       </div>
                       <div className="text-[11px] text-slate-500">
-                        Original: {page.image.naturalWidth}×{page.image.naturalHeight} px • Rotation:{" "}
-                        {page.rotation}°
+                        {page.image.naturalWidth}×{page.image.naturalHeight} px
                       </div>
                     </div>
                   </div>
@@ -1958,60 +2014,43 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
             </div>
           </div>
 
-          {/* Right PDF Output & Binary Verification Column (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
+          {/* Right PDF Output Card (5 cols) */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                DCTDecode PDF-1.4 Binary Packer
-              </span>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Compressed PDF Output
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Guaranteed Under {pdfMaxKB} KB
+                </p>
+              </div>
               {pdfProcessing ? (
-                <span className="text-xs font-semibold text-blue-600">Packing PDF...</span>
+                <span className="text-xs font-bold text-blue-600">Compressing...</span>
               ) : packedPdf ? (
-                <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Verified &lt;{pdfMaxKB}KB
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  {packedPdf.sizeKB} KB Ready
                 </span>
               ) : null}
             </div>
 
             {packedPdf ? (
               <div className="space-y-4">
-                <div className="p-5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold">
-                      %PDF-1.4 /DCTDecode Ready
-                    </span>
-                    <span className="text-xs font-mono text-slate-300">
-                      {packedPdf.pageCount} A4 {packedPdf.pageCount === 1 ? "Page" : "Pages"}
-                    </span>
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/50 to-emerald-50/50 border border-blue-200/80 text-center space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 text-xs font-bold">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    {packedPdf.pageCount} A4 {packedPdf.pageCount === 1 ? "Page" : "Pages"} Merged
                   </div>
 
-                  <div className="text-3xl font-extrabold tracking-tight text-emerald-400">
-                    {packedPdf.sizeKB} KB
-                    <span className="text-xs font-normal text-slate-300 ml-2">
-                      ({packedPdf.byteLength.toLocaleString()} bytes)
-                    </span>
+                  <div className="text-4xl font-black tracking-tight text-slate-900">
+                    {packedPdf.sizeKB} <span className="text-xl text-emerald-600">KB</span>
                   </div>
 
-                  <div className="text-xs text-slate-300 space-y-1 font-mono pt-2 border-t border-slate-700/80">
-                    <div className="flex justify-between">
-                      <span>Target Exam Limit:</span>
-                      <span className="text-emerald-300">
-                        {packedPdf.minKB} KB – {packedPdf.maxKB} KB
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Page Render Resolution:</span>
-                      <span>
-                        {packedPdf.resolutionWidthPx} ×{" "}
-                        {Math.round(packedPdf.resolutionWidthPx * 1.4142)} px
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Stream Filter:</span>
-                      <span className="text-cyan-300">/Filter /DCTDecode (Q={packedPdf.qualityUsed})</span>
-                    </div>
-                  </div>
+                  <p className="text-xs text-slate-600">
+                    Target Window: <strong>{packedPdf.minKB}–{packedPdf.maxKB} KB</strong> • Resolution:{" "}
+                    {packedPdf.resolutionWidthPx}×{Math.round(packedPdf.resolutionWidthPx * 1.4142)} px
+                  </p>
                 </div>
 
                 <button
@@ -2022,14 +2061,14 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       `document-verified-${Math.round(packedPdf.sizeKB)}kb.pdf`
                     )
                   }
-                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition"
+                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
                 >
                   <Download className="w-5 h-5" />
-                  <span>Download Compressed PDF ({packedPdf.sizeKB} KB)</span>
+                  <span>Download Ready PDF ({packedPdf.sizeKB} KB)</span>
                 </button>
               </div>
             ) : (
-              <div className="p-8 text-center text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
+              <div className="p-8 text-center text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-2xl">
                 Add 1 to 5 images on the left to build a guaranteed &lt;100KB or &lt;300KB PDF.
               </div>
             )}
@@ -2040,14 +2079,14 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {/* ==================== TAB 4: SSC LIVE WEBCAM STUDIO ==================== */}
       {activeTab === "webcam" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  SSC.gov.in Live Webcam Capture Studio (80% Face Guide)
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                  SSC Live Webcam Studio (80% Face Guide)
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Align your face at eye-level against a plain wall, boost background brightness, and export directly to 20KB–50KB 200 DPI JPG.
+                  Take a live eye-level photo against a plain wall and export directly to 20–50 KB JPG.
                 </p>
               </div>
 
@@ -2056,10 +2095,10 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   <button
                     type="button"
                     onClick={() => startWebcam(facingMode)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xs"
                   >
                     <Camera className="w-4 h-4" />
-                    Start Live Camera
+                    Start Camera
                   </button>
                 ) : (
                   <>
@@ -2070,16 +2109,16 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                         setFacingMode(nextMode);
                         startWebcam(nextMode);
                       }}
-                      className="px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700"
+                      className="px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700"
                     >
                       Switch Camera
                     </button>
                     <button
                       type="button"
                       onClick={stopWebcam}
-                      className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-xs font-semibold"
+                      className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-xs font-bold"
                     >
-                      Stop Camera
+                      Stop
                     </button>
                   </>
                 )}
@@ -2088,13 +2127,12 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
             {webcamError && (
               <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-1">
-                <div className="font-bold">Camera Notice:</div>
+                <div className="font-bold">Camera Access Required:</div>
                 <div>{webcamError}</div>
               </div>
             )}
 
-            {/* Live Video Viewport with 80% Oval Overlay */}
-            <div className="relative bg-slate-950 rounded-2xl overflow-hidden min-h-[340px] flex items-center justify-center border border-slate-800">
+            <div className="relative bg-slate-900 rounded-2xl overflow-hidden min-h-[340px] flex items-center justify-center border border-slate-200">
               <video
                 ref={videoRef}
                 playsInline
@@ -2121,25 +2159,26 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
 
               {!webcamActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-slate-300 space-y-3">
-                  <Camera className="w-12 h-12 text-blue-400 opacity-80" />
+                  <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-400/30 flex items-center justify-center">
+                    <Camera className="w-7 h-7 text-blue-400" />
+                  </div>
                   <div className="max-w-md space-y-1">
                     <p className="text-sm font-bold text-white">
-                      Click &ldquo;Start Live Camera&rdquo; to open the SSC Webcam Alignment Studio
+                      Click &ldquo;Start Camera&rdquo; to open the Live Alignment Studio
                     </p>
                     <p className="text-xs text-slate-400">
-                      Remove spectacles to avoid lens glare, sit in front of a plain light wall, and look straight at the lens.
+                      Remove spectacles to prevent lens glare and sit facing a bright light or window.
                     </p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Webcam Controls Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
               <div>
                 <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>Plain Wall Brightness Boost</span>
-                  <span>+{webcamBrightnessBoost}%</span>
+                  <span>Wall Brightness Boost</span>
+                  <span className="text-blue-600 font-bold">+{webcamBrightnessBoost}%</span>
                 </div>
                 <input
                   type="range"
@@ -2156,16 +2195,16 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   type="button"
                   disabled={!webcamActive}
                   onClick={captureFromWebcam}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs sm:text-sm shadow-xs flex items-center justify-center gap-1.5"
                 >
                   <Camera className="w-4 h-4" />
-                  Instant Capture
+                  Capture Photo
                 </button>
                 <button
                   type="button"
                   disabled={!webcamActive}
                   onClick={triggerWebcamCountdownCapture}
-                  className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-semibold text-xs"
+                  className="py-2.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-bold text-xs"
                 >
                   3s Timer
                 </button>
@@ -2173,19 +2212,18 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
             </div>
           </div>
 
-          {/* Right Webcam Captured Result & SSC Compliance Checklist (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
-            <h4 className="text-sm font-bold text-slate-900">
-              SSC Captured Output (275×354 px • 20KB–50KB • 200 DPI)
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-4">
+            <h4 className="text-sm font-extrabold text-slate-900">
+              Captured SSC Photo (275×354 px • 20–50 KB)
             </h4>
 
             {webcamCapturedResult ? (
               <div className="space-y-4">
-                <div className="bg-slate-100 p-4 rounded-xl flex justify-center border border-slate-200">
+                <div className="bg-slate-50 p-4 rounded-2xl flex justify-center border border-slate-200">
                   <img
                     src={webcamCapturedResult.dataUrl}
                     alt="SSC Webcam Captured Photo"
-                    className="max-h-[260px] rounded shadow bg-white"
+                    className="max-h-[260px] rounded-lg shadow-md bg-white"
                   />
                 </div>
                 <button
@@ -2198,27 +2236,27 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       )}kb.jpg`
                     )
                   }
-                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2"
                 >
                   <Download className="w-5 h-5" />
-                  Download SSC Photo ({webcamCapturedResult.report.sizeKB} KB • 200 DPI)
+                  Download SSC Photo ({webcamCapturedResult.report.sizeKB} KB)
                 </button>
               </div>
             ) : (
-              <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-2.5">
+              <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-200/70 text-xs text-slate-700 space-y-2.5">
                 <div className="font-bold text-slate-900 flex items-center gap-1.5">
                   <Eye className="w-4 h-4 text-blue-600" />
-                  Mandatory SSC Live Photo Checklist:
+                  Quick Tips for 100% SSC Approval:
                 </div>
                 <ul className="list-disc pl-4 space-y-1.5">
                   <li>
-                    <strong>Remove Spectacles / Glasses:</strong> Even slight flash reflection on lenses causes automated SSC rejection.
+                    <strong>Remove Spectacles:</strong> Even tiny glare on glasses causes automated rejection on ssc.gov.in.
                   </li>
                   <li>
-                    <strong>Both Ears Visible:</strong> Look straight at the webcam so both ears and full forehead are inside the 80% oval.
+                    <strong>Both Ears Visible:</strong> Look straight ahead so both ears are clearly visible inside the green oval.
                   </li>
                   <li>
-                    <strong>Plain Light Wall:</strong> Stand against a white or light wall with light facing your face.
+                    <strong>Plain Background:</strong> Sit against a plain white or light wall.
                   </li>
                 </ul>
               </div>
@@ -2230,43 +2268,43 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {/* ==================== TAB 5: 4x6 INCH STUDIO PRINT SHEET ==================== */}
       {activeTab === "printsheet" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-4">
             <div>
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
-                Save ₹90 at Local Photo Studios
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-1.5">
+                Save ₹90 at Local Photo Shops
               </span>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                4×6 Inch (300 DPI) 8-Photo Studio Print Sheet
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                4×6 Inch (300 DPI) 8-Photo Print Sheet
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Arranges your resized passport photo from Tab 1 onto a standard 4×6 inch (1800×1200 px at 300 DPI) postcard sheet with scissor cut lines. Print at any shop for ₹10!
+                Places 8 copies of your passport photo from Tab 1 onto a standard 4×6 inch postcard sheet. Take this file to any local shop or cyber cafe for a ₹10 print!
               </p>
             </div>
 
             <div className="space-y-2">
               <label className="block text-xs font-bold uppercase text-slate-500">
-                4×6 Sheet Grid Layout
+                Choose Sheet Layout
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {[
                   {
                     id: "8-landscape" as const,
-                    label: "8 Passport Photos — 4×2 Landscape (1800×1200 px, 300 DPI)"
+                    label: "8 Passport Photos — 4×2 Landscape (1800×1200 px)"
                   },
                   {
                     id: "8-portrait" as const,
-                    label: "8 Passport Photos — 2×4 Portrait (1200×1800 px, 300 DPI)"
+                    label: "8 Passport Photos — 2×4 Portrait (1200×1800 px)"
                   },
                   {
                     id: "12-landscape" as const,
-                    label: "12 Stamp/Mini Photos — 4×3 Grid (1800×1200 px, 300 DPI)"
+                    label: "12 Mini / Stamp Photos — 4×3 Grid (1800×1200 px)"
                   }
                 ].map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() => setSheetLayout(opt.id)}
-                    className={`p-3 rounded-xl border text-left text-xs font-semibold transition ${
+                    className={`p-3 rounded-xl border text-left text-xs font-bold transition ${
                       sheetLayout === opt.id
                         ? "bg-blue-600 text-white border-blue-600"
                         : "bg-slate-50 text-slate-800 border-slate-200 hover:border-blue-400"
@@ -2278,7 +2316,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
               </div>
             </div>
 
-            <div className="space-y-2.5 pt-2">
+            <div className="space-y-2.5 pt-1">
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -2286,8 +2324,8 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   onChange={(e) => setSheetCutLines(e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600"
                 />
-                <span className="text-xs sm:text-sm font-semibold text-slate-800">
-                  Draw Dashed Scissor Cut Lines &amp; Crop Ticks
+                <span className="text-xs sm:text-sm font-semibold text-slate-700">
+                  Show Scissor Cut Lines
                 </span>
               </label>
 
@@ -2298,14 +2336,14 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   onChange={(e) => setSheetPhotoBorder(e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600"
                 />
-                <span className="text-xs sm:text-sm font-semibold text-slate-800">
-                  Add Crisp 2px Black Studio Frame Around Each Photo
+                <span className="text-xs sm:text-sm font-semibold text-slate-700">
+                  Add Crisp Black Border Around Each Photo
                 </span>
               </label>
             </div>
 
             {packedSheet && (
-              <div className="pt-2 space-y-3">
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -2314,48 +2352,33 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       `4x6-inch-300dpi-studio-print-sheet-${sheetLayout}.jpg`
                     )
                   }
-                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition"
+                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
                 >
                   <Download className="w-5 h-5" />
                   <span>
                     Download 4×6 Print Sheet ({packedSheet.report.sizeKB} KB • 300 DPI)
                   </span>
                 </button>
-
-                <div className="p-3 rounded-xl bg-slate-900 text-slate-200 text-xs font-mono space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Canvas Resolution:</span>
-                    <span>
-                      {packedSheet.report.widthPx} × {packedSheet.report.heightPx} px (4×6 Inch)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">JFIF Header DPI:</span>
-                    <span className="text-emerald-300">
-                      {packedSheet.report.dpiX} DPI (Bytes 13-17: {packedSheet.report.jfifBytes13To17Hex})
-                    </span>
-                  </div>
-                </div>
               </div>
             )}
           </div>
 
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col items-center">
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col items-center">
             <div className="w-full flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                4×6 Inch (10×15 cm) 300-DPI Lab Sheet Preview
+                4×6 Inch (10×15 cm) 300-DPI Print Preview
               </span>
               {sheetProcessing && (
-                <span className="text-xs font-semibold text-blue-600">Rendering 300 DPI...</span>
+                <span className="text-xs font-bold text-blue-600">Generating Sheet...</span>
               )}
             </div>
 
-            <div className="w-full bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl p-4 flex items-center justify-center min-h-[340px]">
+            <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-center min-h-[340px]">
               {packedSheet ? (
                 <img
                   src={packedSheet.dataUrl}
                   alt="4x6 Inch 8-Photo Studio Print Sheet Preview"
-                  className="max-h-[420px] w-auto rounded shadow-md bg-white"
+                  className="max-h-[420px] w-auto rounded-lg shadow-md bg-white"
                 />
               ) : (
                 <span className="text-xs text-slate-400">
@@ -2367,31 +2390,41 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
         </div>
       )}
 
-      {/* Programmatic SEO Quick Directory Bar at bottom of Workbench */}
-      <div className="mt-8 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
+      {/* Clean All-Exam Directory Cards at bottom of Workbench */}
+      <div className="pt-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+          <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-blue-600" />
-            Dedicated Official Exam &amp; Portal Resizer Pages
+            All 15 Official Exam &amp; Identity Resizer Tools
           </h3>
-          <span className="text-xs text-slate-400">Direct Slug URLs</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {EXAMS.map((exam) => (
             <Link
               key={exam.slug}
               href={`/${exam.slug}`}
-              className="p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 transition group"
+              className="p-3.5 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-500 hover:shadow-md transition group flex flex-col justify-between"
             >
-              <div className="text-xs font-bold text-blue-600 group-hover:underline">
-                {exam.shortName}
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-blue-600 group-hover:underline">
+                    {exam.shortName}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                    {exam.dpi} DPI
+                  </span>
+                </div>
+                <div className="text-xs font-semibold text-slate-800 mt-1 line-clamp-1">
+                  {exam.title}
+                </div>
               </div>
-              <div className="text-xs font-semibold text-slate-800 mt-0.5 line-clamp-1">
-                {exam.title}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-1 font-mono">
-                {exam.presets[0]?.widthPx}×{exam.presets[0]?.heightPx}px • {exam.presets[0]?.minKB}–
-                {exam.presets[0]?.maxKB}KB • {exam.presets[0]?.dpi} DPI
+              <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span>
+                  {exam.widthPx}×{exam.heightPx} px
+                </span>
+                <span className="font-bold text-emerald-700">
+                  {exam.minKB}–{exam.maxKB} KB ({exam.format})
+                </span>
               </div>
             </Link>
           ))}
