@@ -4,8 +4,8 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
-        userAgent: "*",
-        allow: "/"
+        userAgent: ["*", "Googlebot", "Googlebot-Image"],
+        allow: ["/", "/icon.png", "/apple-icon.png", "/favicon.ico"]
       }
     ],
     sitemap: "https://www.examdoc.in/sitemap.xml",
