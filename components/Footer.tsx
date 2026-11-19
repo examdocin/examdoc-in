@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { EXAMS, ExamPreset } from "@/data/exams";
-import { FileCheck2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 function formatFooterExamLabel(exam: ExamPreset): string {
   if (/kb/i.test(exam.shortName)) {
@@ -21,10 +21,7 @@ export default function Footer() {
         {/* Top Brand Summary Row */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-slate-800">
           <div className="space-y-1.5 max-w-xl">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                <FileCheck2 className="w-4 h-4" />
-              </div>
+            <div className="flex items-center">
               <span className="text-lg font-extrabold text-white">
                 ExamDoc<span className="text-blue-500">.in</span>
               </span>

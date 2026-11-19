@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileCheck2, ShieldCheck, Menu, X } from "lucide-react";
+import { ShieldCheck, Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Photo Maker", href: "/ssc-cgl-photo-resizer-20kb-to-50kb" },
@@ -18,16 +18,13 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-16 flex items-center justify-between gap-2">
-        {/* Left: Clean ExamDoc.in Logo */}
+        {/* Left: Clean ExamDoc.in Wordmark */}
         <Link
           href="/"
           onClick={() => setMobileMenuOpen(false)}
-          className="flex items-center gap-2 shrink-0 min-h-[44px] group"
+          className="flex items-center shrink-0 min-h-[44px] group"
         >
-          <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-2xs group-hover:bg-blue-700 transition">
-            <FileCheck2 className="w-4 h-4 md:w-5 md:h-5" />
-          </div>
-          <span className="text-lg font-extrabold tracking-tight text-slate-900">
+          <span className="text-lg md:text-xl font-extrabold tracking-tight text-slate-900">
             ExamDoc<span className="text-blue-600">.in</span>
           </span>
         </Link>
