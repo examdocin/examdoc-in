@@ -7,6 +7,7 @@ import { FileCheck2, ShieldCheck, Menu, X } from "lucide-react";
 const NAV_LINKS = [
   { label: "Photo Maker", href: "/ssc-cgl-photo-resizer-20kb-to-50kb" },
   { label: "Sign & Thumb", href: "/ssc-signature-resizer-10kb-to-20kb" },
+  { label: "Doc Scanner", href: "/online-document-scanner-auto-crop-pdf" },
   { label: "PDF <100KB", href: "/marksheet-pdf-size-reducer-under-100kb-200kb" },
   { label: "All Exams", href: "#all-exams" }
 ];
@@ -31,16 +32,16 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Center (Desktop md+): 4 Clean Links */}
+        {/* Center (Desktop md+): 5 Clean Links */}
         <nav
           aria-label="Main Navigation"
-          className="hidden md:flex items-center gap-2"
+          className="hidden md:flex items-center gap-1.5 lg:gap-2"
         >
           {NAV_LINKS.map((item) => (
             <Link
               key={item.label}
               href={item.href}
-              className="inline-flex items-center px-3.5 min-h-[44px] rounded-xl text-sm font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50/70 transition"
+              className="inline-flex items-center px-3 min-h-[44px] rounded-xl text-sm font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50/70 whitespace-nowrap transition"
             >
               {item.label}
             </Link>

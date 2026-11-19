@@ -2,6 +2,7 @@ export type ToolTabId =
   | "photo"
   | "signature"
   | "pdf"
+  | "scanner"
   | "webcam"
   | "printsheet";
 
@@ -1507,6 +1508,309 @@ export const EXAMS: ExamPreset[] = [
         question: "What is the new India Post GDS photo and signature size?",
         answer:
           "India Post GDS requires 320x400 pixels (30KB to 100KB, 200 DPI) for the photograph and 300x120 pixels (20KB to 100KB, 200 DPI) for the signature."
+      }
+    ],
+    updatedYear: "2026"
+  },
+
+  // 16. Online Document Scanner Auto-Crop & Magic Color PDF
+  {
+    slug: "online-document-scanner-auto-crop-pdf",
+    shortName: "AI Doc Scanner (Auto-Crop)",
+    title: "Online Document Scanner — Auto Edge Crop, Magic Color & PDF Under 100KB",
+    metaTitle: "Online Document Scanner Auto Crop & Shadow Remover to PDF (<100KB) | ExamDoc",
+    metaDescription:
+      "Free CamScanner-grade online document scanner in your browser. Auto-detect 4 corners, flatten perspective, remove mobile shadows with Magic Color, and export PDF under 100KB/300KB.",
+    h1: "Online Document Scanner — Auto Edge Crop, Magic Color & Exact-KB PDF",
+    subtitle:
+      "Turn tilted, shadowed phone camera photos of certificates and forms into flat, studio-white scans using 4-point perspective homography and Magic Color illumination leveling.",
+    conductingBody: "All Central & State Recruitment, Counselling & DigiLocker Uploads",
+    officialPortal: "https://www.examdoc.in",
+    category: "PDF & Marksheet",
+    defaultTab: "scanner",
+    widthPx: 1240,
+    heightPx: 1754,
+    widthCm: "21.0 cm",
+    heightCm: "29.7 cm",
+    minKB: 50,
+    maxKB: 95,
+    dpi: 200,
+    requiresNameDop: false,
+    requiresFaceOval: false,
+    format: "PDF",
+    guidelines: [
+      "Place your document on a darker table or contrasting surface so the 4 edges are clearly visible.",
+      "Use 'Magic Color' to remove yellow room-bulb tints and phone camera shadows while keeping stamps and blue signatures vivid.",
+      "Use 'B&W Scan' for pure #FFFFFF paper and razor-sharp black text on handwritten declarations or certificates.",
+      "Scan up to 10 pages and export directly to a single PDF under 100 KB, 200 KB, or 300 KB."
+    ],
+    keywords: [
+      "online document scanner auto crop pdf",
+      "camscanner online free no watermark",
+      "remove shadow from document photo online",
+      "perspective crop document to pdf under 100kb"
+    ],
+    presets: [
+      {
+        id: "scanner-auto-100kb",
+        label: "Auto-Crop Document Scan (<100 KB PDF)",
+        tab: "scanner",
+        widthPx: 1240,
+        heightPx: 1754,
+        widthCm: "21.0 cm",
+        heightCm: "29.7 cm",
+        minKB: 50,
+        maxKB: 95,
+        dpi: 200,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "PDF",
+        notes: "4-point perspective flattening + Magic Color shadow removal packed under 100KB."
+      },
+      {
+        id: "scanner-auto-300kb",
+        label: "Multi-Page Document Scan (<300 KB PDF)",
+        tab: "scanner",
+        widthPx: 1400,
+        heightPx: 1980,
+        widthCm: "21.0 cm",
+        heightCm: "29.7 cm",
+        minKB: 150,
+        maxKB: 285,
+        dpi: 300,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "PDF",
+        notes: "Scan 1 to 10 pages into a single crisp PDF under 300KB."
+      }
+    ],
+    rejectionReasons: [
+      "Tilted smartphone photo showing wooden desk, bedsheet, or fingers around the certificate.",
+      "Dark phone shadow across the bottom half of the document making text illegible.",
+      "Third-party mobile scanner app watermarks printed across the bottom corner of official documents."
+    ],
+    howToSteps: [
+      {
+        name: "Take Photo or Upload Document",
+        text: "Tap 'Take Photo (Camera)' on your phone or select an image from your gallery."
+      },
+      {
+        name: "Fine-Tune 4 Corners with 2.5× Loupe",
+        text: "Our Sobel edge detector finds the 4 document corners automatically. Drag any corner with the floating 2.5× magnifier loupe if needed, then tap 'Crop & Enhance'."
+      },
+      {
+        name: "Apply Magic Color & Download Exact-KB PDF",
+        text: "Choose Magic Color or B&W Scan, pick your <100KB or <300KB ceiling, and download with zero watermarks."
+      }
+    ],
+    faqs: [
+      {
+        question: "Does this online document scanner add any watermark like mobile scanner apps?",
+        answer:
+          "No. ExamDoc produces 100% clean, watermark-free PDFs and 200-DPI JPEGs required for official government exam and scholarship portals."
+      },
+      {
+        question: "How does Magic Color remove phone shadows without blurring university stamps?",
+        answer:
+          "Our engine models the local background lighting across a smooth illumination surface and divides each pixel channel by the local background light, eliminating shadows while boosting the chroma of blue/purple stamps and signatures."
+      }
+    ],
+    updatedYear: "2026"
+  },
+
+  // 17. Scan Marksheet to PDF Under 100KB
+  {
+    slug: "scan-marksheet-to-pdf-under-100kb",
+    shortName: "Scan Marksheet (<100KB)",
+    title: "Scan 10th & 12th Marksheet to PDF Under 100KB (Auto-Crop & Shadow Remover)",
+    metaTitle: "Scan 10th 12th Marksheet to PDF Under 100KB Online (Auto Crop & Clear Text) | ExamDoc",
+    metaDescription:
+      "Scan 10th, 12th & Graduation Marksheets, Caste, EWS & Domicile Certificates with your phone camera, flatten perspective, remove shadows, and save as PDF strictly under 100KB.",
+    h1: "Scan 10th / 12th Marksheet & Certificates to PDF Under 100KB",
+    subtitle:
+      "Auto-crops desk backgrounds, straightens angled camera shots, removes shadows with Magic Color, and packs your marksheet into a crystal-clear PDF strictly under 100KB.",
+    conductingBody: "SSC, UPSC, State PSC, Scholarship & University Admission Portals",
+    officialPortal: "https://www.examdoc.in",
+    category: "PDF & Marksheet",
+    defaultTab: "scanner",
+    widthPx: 1240,
+    heightPx: 1754,
+    widthCm: "21.0 cm",
+    heightCm: "29.7 cm",
+    minKB: 50,
+    maxKB: 95,
+    dpi: 200,
+    requiresNameDop: false,
+    requiresFaceOval: false,
+    format: "PDF",
+    guidelines: [
+      "Snap your marksheet in good daylight; our 4-point homography straightens angled shots automatically.",
+      "Magic Color whitens the background paper, which reduces JPEG compression noise and keeps subject marks razor-sharp even under 95 KB.",
+      "Combine multiple semester marksheets (1 to 10 pages) into a single PDF under 100 KB, 200 KB, or 300 KB."
+    ],
+    keywords: [
+      "scan marksheet to pdf under 100kb",
+      "10th marksheet scanner online under 100kb",
+      "caste certificate scanner pdf under 100kb",
+      "clean mobile photo of marksheet to pdf"
+    ],
+    presets: [
+      {
+        id: "scan-marksheet-100kb",
+        label: "Scanned Marksheet PDF (<100 KB Strict)",
+        tab: "scanner",
+        widthPx: 1240,
+        heightPx: 1754,
+        widthCm: "21.0 cm",
+        heightCm: "29.7 cm",
+        minKB: 50,
+        maxKB: 95,
+        dpi: 200,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "PDF",
+        notes: "Perspective-flattened marksheet scan locked between 50KB and 95KB."
+      },
+      {
+        id: "scan-marksheet-200kb",
+        label: "Scanned Marksheet PDF (<200 KB High Clarity)",
+        tab: "scanner",
+        widthPx: 1240,
+        heightPx: 1754,
+        widthCm: "21.0 cm",
+        heightCm: "29.7 cm",
+        minKB: 100,
+        maxKB: 190,
+        dpi: 200,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "PDF",
+        notes: "Ideal for portals allowing up to 200KB per marksheet."
+      }
+    ],
+    rejectionReasons: [
+      "Un-cropped background table or fingers visible around the marksheet border.",
+      "Roll number or QR code unreadable due to low-contrast gray camera lighting.",
+      "File size exceeding 100 KB (102,400 bytes)."
+    ],
+    howToSteps: [
+      {
+        name: "Capture or Upload Marksheet Photo",
+        text: "Take a photo of your 10th/12th marksheet or select it from your phone gallery."
+      },
+      {
+        name: "Confirm 4 Corners & Straighten",
+        text: "Verify the 4 blue corner handles align with the marksheet borders and tap 'Crop & Enhance'."
+      },
+      {
+        name: "Download <100KB PDF",
+        text: "Keep '<100KB' selected and tap 'Download Exact-KB PDF' to get a 65KB–94KB file."
+      }
+    ],
+    faqs: [
+      {
+        question: "Why is a scanned marksheet clearer under 100KB than a raw camera photo converted to PDF?",
+        answer:
+          "A raw camera photo wastes 60% of its file size encoding wood-grain desk backgrounds and uneven gray shadows. By perspective-cropping to the exact paper edges and leveling the paper background to pure white, 100% of the 100KB byte budget goes toward sharp text and numbers."
+      }
+    ],
+    updatedYear: "2026"
+  },
+
+  // 18. ID Card Front & Back 2-in-1 Scanner to Single A4 PDF
+  {
+    slug: "id-card-front-back-scanner-pdf",
+    shortName: "ID Card 2-in-1 Scanner",
+    title: "ID Card Front & Back Scanner — Aadhaar, PAN & Voter ID on 1 A4 Page PDF (<100KB)",
+    metaTitle: "ID Card Front and Back Scanner on 1 Page PDF (<100KB / <300KB) | ExamDoc",
+    metaDescription:
+      "Scan Aadhaar Card, PAN Card, Voter ID, or Driving Licence Front and Back with auto perspective crop and stack both sides onto a single A4 page PDF under 100KB or 300KB.",
+    h1: "ID Card 2-in-1 Scanner (Front & Back on Single A4 Page PDF <100KB)",
+    subtitle:
+      "Guided 2-step Aadhaar, PAN & Voter ID scanner: straightens both Front and Back sides to exact ISO ID-1 (85.6×54 mm) proportions and arranges them neatly on a single A4 PDF.",
+    conductingBody: "UPSC OTR, NSDL/UTI PAN, SSC, Banking & Scholarship Portals",
+    officialPortal: "https://www.examdoc.in",
+    category: "Identity & PAN",
+    defaultTab: "scanner",
+    widthPx: 1240,
+    heightPx: 1754,
+    widthCm: "21.0 cm",
+    heightCm: "29.7 cm",
+    minKB: 50,
+    maxKB: 95,
+    dpi: 200,
+    requiresNameDop: false,
+    requiresFaceOval: false,
+    format: "PDF",
+    guidelines: [
+      "Step 1: Scan the Front Side of your ID card and confirm the 4 corners.",
+      "Step 2: Scan the Back Side of your ID card; both sides are automatically normalized to 85.6×54 mm proportions.",
+      "Both sides are stacked cleanly with subtle borders on a single A4 page and compressed under 100 KB or 300 KB."
+    ],
+    keywords: [
+      "id card front and back scanner on one page pdf",
+      "aadhaar card front back scanner online under 100kb",
+      "voter id pan card two side scanner a4 pdf",
+      "combine id card front and back on single page"
+    ],
+    presets: [
+      {
+        id: "id-card-scan-100kb",
+        label: "ID Card Front+Back A4 PDF (<100 KB)",
+        tab: "scanner",
+        widthPx: 1240,
+        heightPx: 1754,
+        widthCm: "21.0 cm",
+        heightCm: "29.7 cm",
+        minKB: 50,
+        maxKB: 95,
+        dpi: 200,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "PDF",
+        notes: "Stacks straightened Front & Back ID card scans onto 1 A4 page under 100KB."
+      },
+      {
+        id: "id-card-scan-300kb",
+        label: "UPSC / PAN Photo ID Proof PDF (<300 KB)",
+        tab: "scanner",
+        widthPx: 1240,
+        heightPx: 1754,
+        widthCm: "21.0 cm",
+        heightCm: "29.7 cm",
+        minKB: 120,
+        maxKB: 285,
+        dpi: 300,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "PDF",
+        notes: "High-resolution 2-in-1 ID card A4 sheet under 300KB for UPSC and NSDL/UTI PAN."
+      }
+    ],
+    rejectionReasons: [
+      "Uploading only the front of the ID card when the address on the back is required for verification.",
+      "Skewed or differently sized front and back card cutouts pasted sloppily.",
+      "Uploading private Aadhaar/PAN cards to server-based third-party websites."
+    ],
+    howToSteps: [
+      {
+        name: "Select 'ID Card 2-in-1 (Front+Back)' Mode",
+        text: "Scan or upload the Front side of your Aadhaar, PAN, or Voter ID card and adjust the 4 corners."
+      },
+      {
+        name: "Add the Back Side in Step 2",
+        text: "Tap 'Step 2: Back Side' to scan the reverse side. Both cards are automatically straightened to 85.6×54 mm ratio."
+      },
+      {
+        name: "Download Single-Page A4 PDF (<100KB / <300KB)",
+        text: "Download your combined A4 PDF or 200-DPI JPG 100% privately in your browser."
+      }
+    ],
+    faqs: [
+      {
+        question: "Does the ID Card 2-in-1 Scanner keep my Aadhaar and PAN card private?",
+        answer:
+          "Yes, 100%. All edge detection, perspective flattening, and PDF packing run locally inside your browser using client-side Web Workers and ArrayBuffers. Zero bytes are ever uploaded to any server."
       }
     ],
     updatedYear: "2026"

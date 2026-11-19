@@ -4,9 +4,9 @@ import { EXAMS } from "@/data/exams";
 import { FileCheck2, ShieldCheck } from "lucide-react";
 
 export default function Footer() {
-  const col1 = EXAMS.slice(0, 5);
-  const col2 = EXAMS.slice(5, 10);
-  const col3 = EXAMS.slice(10, 15);
+  const col1 = EXAMS.slice(0, 6);
+  const col2 = EXAMS.slice(6, 12);
+  const col3 = EXAMS.slice(12, 18);
 
   return (
     <footer className="bg-slate-950 text-slate-300 border-t border-slate-800 mt-12">
@@ -23,7 +23,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              India&apos;s 100% browser-private government exam photo, signature, thumb impression, declaration, and marksheet/Aadhaar PDF resizer.
+              India&apos;s 100% browser-private government exam photo, signature, thumb impression, declaration, AI document scanner, and marksheet/Aadhaar PDF resizer.
             </p>
           </div>
 
@@ -33,7 +33,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* 3 Balanced Columns of 5 Exam Links Each (15 Total) */}
+        {/* 3 Balanced Columns of 6 Exam Links Each (18 Total) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-8 border-b border-slate-800">
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-white">
@@ -55,7 +55,7 @@ export default function Footer() {
 
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-              IBPS, NEET &amp; UPSC Tools
+              IBPS, NEET, UPSC &amp; PAN Tools
             </h3>
             <ul className="space-y-1">
               {col2.map((exam) => (
@@ -73,7 +73,7 @@ export default function Footer() {
 
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-              State PSC, PAN &amp; PDF Tools
+              AI Doc Scanner &amp; PDF Reducers
             </h3>
             <ul className="space-y-1">
               {col3.map((exam) => (

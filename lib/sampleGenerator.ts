@@ -237,3 +237,126 @@ export async function createDemoDocumentPages(): Promise<
 
   return [front, back];
 }
+
+/**
+ * Generates a realistic smartphone photo of a document resting on a dark desk
+ * with slight perspective tilt and warm indoor lamp shadow for testing the CamScanner engine.
+ */
+export async function createDemoDeskDocumentBlob(): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 960;
+  canvas.height = 1280;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context unavailable");
+
+  // Dark wooden desk background
+  const deskGrad = ctx.createLinearGradient(0, 0, 960, 1280);
+  deskGrad.addColorStop(0, "#1E293B");
+  deskGrad.addColorStop(1, "#0F172A");
+  ctx.fillStyle = deskGrad;
+  ctx.fillRect(0, 0, 960, 1280);
+
+  // Perspective-tilted paper polygon on the desk
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(115, 118);  // TL
+  ctx.lineTo(848, 142);  // TR
+  ctx.lineTo(875, 1148); // BR
+  ctx.lineTo(86, 1165);  // BL
+  ctx.closePath();
+
+  // Warm shadowed paper fill (simulating indoor bulb + phone shadow on bottom right)
+  const paperGrad = ctx.createLinearGradient(100, 110, 880, 1160);
+  paperGrad.addColorStop(0, "#FAF6EE");
+  paperGrad.addColorStop(0.55, "#EFECE4");
+  paperGrad.addColorStop(1, "#C9C5BC");
+  ctx.fillStyle = paperGrad;
+  ctx.fill();
+  ctx.clip();
+
+  // Header band inside paper
+  ctx.fillStyle = "#1E3A8A";
+  ctx.fillRect(100, 145, 760, 88);
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "700 28px Arial, sans-serif";
+  ctx.fillText("BOARD OF SECONDARY EDUCATION — MARKSHEET", 135, 200);
+
+  // Candidate metadata rows
+  ctx.fillStyle = "#0F172A";
+  ctx.font = "700 24px Arial, sans-serif";
+  ctx.fillText("CERTIFICATE OF ACADEMIC PERFORMANCE (2026)", 140, 295);
+
+  ctx.fillStyle = "#1E293B";
+  ctx.font = "600 21px Arial, sans-serif";
+  ctx.fillText("CANDIDATE NAME : AARAV SHARMA", 140, 355);
+  ctx.fillText("ROLL NUMBER     : 24109832 / SECTION A", 140, 398);
+  ctx.fillText("DATE OF BIRTH   : 15-08-2003", 140, 441);
+
+  // Marks Table
+  ctx.strokeStyle = "#475569";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(140, 485, 670, 360);
+
+  const subjects = [
+    ["01. ENGLISH CORE", "100", "94", "A1"],
+    ["02. MATHEMATICS", "100", "98", "A1"],
+    ["03. PHYSICS", "100", "95", "A1"],
+    ["04. CHEMISTRY", "100", "92", "A1"],
+    ["05. COMPUTER SCIENCE", "100", "96", "A1"]
+  ];
+
+  ctx.font = "700 19px Arial, sans-serif";
+  ctx.fillStyle = "#1E3A8A";
+  ctx.fillText("SUBJECT", 160, 525);
+  ctx.fillText("MAX", 490, 525);
+  ctx.fillText("OBTAINED", 580, 525);
+  ctx.fillText("GRADE", 720, 525);
+
+  ctx.font = "600 19px Arial, sans-serif";
+  ctx.fillStyle = "#0F172A";
+  subjects.forEach((row, idx) => {
+    const y = 580 + idx * 52;
+    ctx.beginPath();
+    ctx.moveTo(140, y - 34);
+    ctx.lineTo(810, y - 34);
+    ctx.stroke();
+    ctx.fillText(row[0], 160, y);
+    ctx.fillText(row[1], 495, y);
+    ctx.fillText(row[2], 605, y);
+    ctx.fillText(row[3], 735, y);
+  });
+
+  // Official Blue University Stamp & Controller Signature
+  ctx.strokeStyle = "#1D4ED8";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.arc(250, 985, 58, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#1D4ED8";
+  ctx.font = "700 15px Arial, sans-serif";
+  ctx.fillText("VERIFIED SEAL", 198, 990);
+
+  // Blue cursive signature
+  ctx.strokeStyle = "#1E40AF";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(580, 995);
+  ctx.bezierCurveTo(610, 940, 665, 955, 650, 1000);
+  ctx.bezierCurveTo(670, 965, 725, 960, 765, 990);
+  ctx.stroke();
+  ctx.fillStyle = "#334155";
+  ctx.font = "600 17px Arial, sans-serif";
+  ctx.fillText("Controller of Examinations", 575, 1035);
+
+  ctx.restore();
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Demo blob failed"))),
+      "image/jpeg",
+      0.92
+    );
+  });
+}
+

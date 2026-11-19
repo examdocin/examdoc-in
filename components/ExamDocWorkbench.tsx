@@ -25,8 +25,10 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
-  Wand2
+  Wand2,
+  ScanLine
 } from "lucide-react";
+import DocumentScannerStudio from "./DocumentScannerStudio";
 import {
   EXAMS,
   ExamPreset,
@@ -171,7 +173,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
   const applyPreset = useCallback((preset: DocumentPreset) => {
     setSelectedPresetId(preset.id);
     setActiveTab(preset.tab);
-    if (preset.tab === "pdf") {
+    if (preset.tab === "pdf" || preset.tab === "scanner") {
       setPdfMinKB(preset.minKB);
       setPdfMaxKB(preset.maxKB);
     } else {
@@ -706,6 +708,12 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       icon: PenTool
     },
     {
+      id: "scanner",
+      title: "Doc Scanner",
+      subtitle: "Auto-Crop & Magic Color",
+      icon: ScanLine
+    },
+    {
       id: "pdf",
       title: "PDF <100KB",
       subtitle: "Marksheet & Aadhaar",
@@ -864,7 +872,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>
-                  {activeTab === "pdf"
+                  {activeTab === "pdf" || activeTab === "scanner"
                     ? `${pdfMinKB}–${pdfMaxKB} KB PDF`
                     : `${widthPx}×${heightPx} px • ${minKB}–${maxKB} KB • ${dpi} DPI`}
                 </span>
@@ -903,11 +911,11 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
         </div>
       </div>
 
-      {/* 5-Tool Switcher: Swipeable Horizontal Pill Strip on Mobile, 5-Col Grid on Desktop */}
+      {/* 6-Tool Switcher: Swipeable Horizontal Pill Strip on Mobile, 6-Col Grid on Desktop */}
       <div
         role="tablist"
-        aria-label="ExamDoc 5-in-1 Document Suite"
-        className="flex lg:grid lg:grid-cols-5 gap-2 overflow-x-auto no-scrollbar flex-nowrap snap-x pb-1"
+        aria-label="ExamDoc 6-in-1 Document Suite"
+        className="flex lg:grid lg:grid-cols-6 gap-2 overflow-x-auto no-scrollbar flex-nowrap snap-x pb-1"
       >
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -2477,12 +2485,43 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
         </div>
       )}
 
-      {/* Single "All 15 Official Exam Tools" Directory with Swipeable Category Filter Pills */}
+      {/* ==================== TAB 6: AI DOCUMENT & ID CARD SCANNER ==================== */}
+      {activeTab === "scanner" && (
+        <DocumentScannerStudio
+          initialMode={
+            selectedExamSlug.includes("id-card") ? "id-card" : "document"
+          }
+          initialBudget={
+            pdfMaxKB <= 100 ? "100" : pdfMaxKB <= 200 ? "200" : "300"
+          }
+          onSendToResizer={(img, name, targetTab) => {
+            if (targetTab === "photo") {
+              setPhotoImage(img);
+              setUploadedPhotoName(name);
+              setPhotoZoom(1.0);
+              setPhotoPanX(0);
+              setPhotoPanY(0);
+              setPhotoRotation(0);
+              setActiveTab("photo");
+            } else {
+              setSignImage(img);
+              setUploadedSignName(name);
+              setSignZoom(1.0);
+              setSignPanX(0);
+              setSignPanY(0);
+              setSignRotation(0);
+              setActiveTab("signature");
+            }
+          }}
+        />
+      )}
+
+      {/* Single "All 18 Official Exam Tools" Directory with Swipeable Category Filter Pills */}
       <div id="all-exams" className="pt-6 scroll-mt-20">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3.5">
           <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>All 15 Official Exam &amp; Identity Resizer Tools</span>
+            <span>All 18 Official Exam, Identity &amp; Scanner Tools</span>
           </h2>
 
           {/* Swipeable Category Filter Pills */}
