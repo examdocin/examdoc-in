@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/"
       }
     ],
-    sitemap: "https://examdoc.in/sitemap.xml",
-    host: "https://examdoc.in"
+    sitemap: "https://www.examdoc.in/sitemap.xml",
+    host: "https://www.examdoc.in"
   };
 }

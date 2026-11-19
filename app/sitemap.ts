@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { EXAMS } from "@/data/exams";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://examdoc.in";
+  const baseUrl = "https://www.examdoc.in";
   const lastModified = new Date();
 
   const examEntries: MetadataRoute.Sitemap = EXAMS.map((exam) => ({
@@ -14,7 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     {
-      url: baseUrl,
+      url: `${baseUrl}/`,
       lastModified,
       changeFrequency: "daily",
       priority: 1.0

@@ -6,18 +6,18 @@ import Footer from "@/components/Footer";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1d4ed8"
+  themeColor: "#2563EB"
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://examdoc.in"),
+  metadataBase: new URL("https://www.examdoc.in"),
+  applicationName: "ExamDoc",
   title: {
-    default:
-      "ExamDoc.in — SSC, UPSC, IBPS, NEET, PAN Photo & Signature Resizer (20KB-50KB, 200/300 DPI) + PDF <100KB",
-    template: "%s | ExamDoc.in"
+    default: "Free Govt Exam Photo, Signature & PDF Resizer | ExamDoc",
+    template: "%s | ExamDoc"
   },
   description:
-    "India's #1 100% client-side government exam photo, signature, thumb, handwritten declaration & marksheet/Aadhaar PDF (<100KB / <300KB) utility. True 200/300 DPI JFIF binary header, Name & Date (DOP) plaque, and SSC Live Webcam.",
+    "Resize SSC, UPSC, IBPS, RRB, NEET & PAN photos (20KB–50KB), signatures (10KB–20KB), and marksheet PDFs (<100KB) 100% privately in your browser.",
   keywords: [
     "ssc photo maker 20kb to 50kb with name and date",
     "marksheet pdf size reducer under 100kb",
@@ -29,17 +29,22 @@ export const metadata: Metadata = {
     "aadhaar front back merge pdf under 100kb"
   ],
   alternates: {
-    canonical: "https://examdoc.in"
+    canonical: "https://www.examdoc.in/"
   },
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: "https://examdoc.in",
-    siteName: "ExamDoc.in",
-    title:
-      "ExamDoc.in — India's #1 Govt Exam Photo, Signature, Declaration & PDF (<100KB) Utility",
+    url: "https://www.examdoc.in/",
+    siteName: "ExamDoc",
+    title: "Free Govt Exam Photo, Signature & PDF Resizer | ExamDoc",
     description:
-      "100% browser-based 200/300 DPI Photo Resizer (with Name & DOP), Gray-Paper Signature Whitener, Aadhaar/Marksheet PDF Packer (<100KB), SSC Live Webcam & 4x6 Print Sheet."
+      "Resize SSC, UPSC, IBPS, RRB, NEET & PAN photos (20KB–50KB), signatures (10KB–20KB), and marksheet PDFs (<100KB) 100% privately in your browser."
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Govt Exam Photo, Signature & PDF Resizer | ExamDoc",
+    description:
+      "Resize SSC, UPSC, IBPS, RRB, NEET & PAN photos (20KB–50KB), signatures (10KB–20KB), and marksheet PDFs (<100KB) 100% privately in your browser."
   },
   robots: {
     index: true,

@@ -22,14 +22,17 @@ export async function generateMetadata({ params }: ExamSlugPageProps): Promise<M
   const exam = getExamBySlug(slug);
   if (!exam) {
     return {
-      title: "Exam Tool Not Found | ExamDoc.in"
+      title: "Exam Tool Not Found"
     };
   }
 
-  const canonicalUrl = `https://examdoc.in/${exam.slug}`;
+  const canonicalUrl = `https://www.examdoc.in/${exam.slug}`;
+  // Strip any existing "| ..." suffix so layout template "%s | ExamDoc" appends cleanly
+  const cleanTitleBase = exam.metaTitle.split("|")[0].trim();
+  const fullTitle = `${cleanTitleBase} | ExamDoc`;
 
   return {
-    title: exam.metaTitle,
+    title: cleanTitleBase,
     description: exam.metaDescription,
     keywords: exam.keywords,
     alternates: {
@@ -39,13 +42,13 @@ export async function generateMetadata({ params }: ExamSlugPageProps): Promise<M
       type: "website",
       locale: "en_IN",
       url: canonicalUrl,
-      siteName: "ExamDoc.in",
-      title: exam.metaTitle,
+      siteName: "ExamDoc",
+      title: fullTitle,
       description: exam.metaDescription
     },
     twitter: {
       card: "summary_large_image",
-      title: exam.metaTitle,
+      title: fullTitle,
       description: exam.metaDescription
     }
   };
@@ -59,7 +62,7 @@ export default async function ExamSlugPage({ params }: ExamSlugPageProps) {
     notFound();
   }
 
-  const canonicalUrl = `https://examdoc.in/${exam.slug}`;
+  const canonicalUrl = `https://www.examdoc.in/${exam.slug}`;
 
   return (
     <div>
