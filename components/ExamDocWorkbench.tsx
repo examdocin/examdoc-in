@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { sendGAEvent } from "@next/third-parties/google";
 import {
   Camera,
   FileText,
@@ -665,6 +666,15 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
+    try {
+      sendGAEvent("event", "document_download", {
+        exam_slug: activeExam.slug,
+        tool_type: activeTab,
+        filename
+      });
+    } catch {
+      // Ignore analytics errors if blocked by ad-blocker
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

@@ -6,6 +6,7 @@ import React, {
   useRef,
   useCallback
 } from "react";
+import { sendGAEvent } from "@next/third-parties/google";
 import {
   Camera,
   Upload,
@@ -784,6 +785,18 @@ export default function DocumentScannerStudio({
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
+    try {
+      sendGAEvent("event", "document_download", {
+        exam_slug:
+          workflowMode === "id-card"
+            ? "id-card-front-back-scanner-pdf"
+            : "online-document-scanner-auto-crop-pdf",
+        tool_type: `scanner_${workflowMode}`,
+        filename
+      });
+    } catch {
+      // Ignore analytics errors if blocked by ad-blocker
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
