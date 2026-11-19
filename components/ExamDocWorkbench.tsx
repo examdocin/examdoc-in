@@ -190,6 +190,110 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
   }, []);
 
+  /**
+   * Smart tab switcher: automatically syncs the active Document Preset, Pixel Dimensions,
+   * and KB Rules whenever the user switches tabs so a Photo preset (20-50KB) never stays active
+   * when switching to the Signature tab (10-20KB) or vice versa.
+   */
+  const handleSwitchTab = useCallback(
+    (nextTab: ToolTabId) => {
+      // 1. Check if the currently active exam already has a preset for nextTab
+      const matchInCurrentExam = activeExam.presets.find((p) => p.tab === nextTab);
+      if (matchInCurrentExam) {
+        applyPreset(matchInCurrentExam);
+        return;
+      }
+
+      // 2. Otherwise, apply the matching specification for nextTab based on exam family
+      setActiveTab(nextTab);
+      const slug = activeExam.slug;
+
+      if (nextTab === "signature") {
+        if (slug.includes("rrb")) {
+          setWidthPx(315);
+          setHeightPx(157);
+          setMinKB(32);
+          setMaxKB(68);
+          setDpi(200);
+        } else if (slug.includes("ibps") || slug.includes("sbi")) {
+          setWidthPx(140);
+          setHeightPx(60);
+          setMinKB(10);
+          setMaxKB(20);
+          setDpi(200);
+        } else if (slug.includes("upsc")) {
+          setWidthPx(500);
+          setHeightPx(500);
+          setMinKB(25);
+          setMaxKB(250);
+          setDpi(300);
+        } else if (slug.includes("pan")) {
+          setWidthPx(400);
+          setHeightPx(200);
+          setMinKB(12);
+          setMaxKB(45);
+          setDpi(600);
+        } else if (slug.includes("gds")) {
+          setWidthPx(300);
+          setHeightPx(120);
+          setMinKB(25);
+          setMaxKB(90);
+          setDpi(200);
+        } else {
+          // Standard SSC / NEET / State PSC Signature: 315x157 px, 10-20 KB, 200 DPI
+          setWidthPx(315);
+          setHeightPx(157);
+          setMinKB(10);
+          setMaxKB(20);
+          setDpi(200);
+        }
+      } else if (nextTab === "photo") {
+        if (slug.includes("rrb")) {
+          setWidthPx(275);
+          setHeightPx(354);
+          setMinKB(32);
+          setMaxKB(68);
+          setDpi(200);
+        } else if (slug.includes("ibps") || slug.includes("sbi")) {
+          setWidthPx(200);
+          setHeightPx(230);
+          setMinKB(20);
+          setMaxKB(50);
+          setDpi(200);
+        } else if (slug.includes("upsc")) {
+          setWidthPx(550);
+          setHeightPx(550);
+          setMinKB(25);
+          setMaxKB(250);
+          setDpi(300);
+        } else if (slug.includes("pan")) {
+          setWidthPx(213);
+          setHeightPx(213);
+          setMinKB(10);
+          setMaxKB(28);
+          setDpi(300);
+        } else if (slug.includes("neet")) {
+          setWidthPx(413);
+          setHeightPx(531);
+          setMinKB(15);
+          setMaxKB(180);
+          setDpi(300);
+        } else {
+          // Standard SSC / State PSC Photo: 275x354 px, 20-50 KB, 200 DPI
+          setWidthPx(275);
+          setHeightPx(354);
+          setMinKB(20);
+          setMaxKB(50);
+          setDpi(200);
+        }
+      } else if (nextTab === "pdf" || nextTab === "scanner") {
+        setPdfMinKB(50);
+        setPdfMaxKB(95);
+      }
+    },
+    [activeExam, applyPreset]
+  );
+
   // Load demo samples on initial client mount
   useEffect(() => {
     let mounted = true;
@@ -764,16 +868,18 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     return true;
   });
 
-  // Determine active sticky mobile download action
+  // Determine active sticky mobile download action (compact 2-line left meta + concise right CTA)
   const getStickyDownloadAction = (): {
-    label: string;
-    meta: string;
+    line1: string;
+    line2: string;
+    ctaLabel: string;
     onTrigger: () => void;
   } | null => {
     if (activeTab === "photo" && packedPhoto) {
       return {
-        label: `Download Ready Photo (${packedPhoto.report.sizeKB} KB)`,
-        meta: `${packedPhoto.report.widthPx}×${packedPhoto.report.heightPx} px • ${packedPhoto.report.dpiX} DPI Verified`,
+        line1: `${packedPhoto.report.dpiX} DPI • ${minKB}–${maxKB} KB`,
+        line2: `${packedPhoto.report.widthPx}×${packedPhoto.report.heightPx} px • JPG`,
+        ctaLabel: `Download (${packedPhoto.report.sizeKB} KB)`,
         onTrigger: () =>
           downloadBlob(
             packedPhoto.blob,
@@ -785,8 +891,9 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
     if (activeTab === "signature" && packedSign) {
       return {
-        label: `Download Ready Signature (${packedSign.report.sizeKB} KB)`,
-        meta: `${packedSign.report.widthPx}×${packedSign.report.heightPx} px • ${packedSign.report.dpiX} DPI Verified`,
+        line1: `${packedSign.report.dpiX} DPI • ${minKB}–${maxKB} KB`,
+        line2: `${packedSign.report.widthPx}×${packedSign.report.heightPx} px • JPG`,
+        ctaLabel: `Download (${packedSign.report.sizeKB} KB)`,
         onTrigger: () =>
           downloadBlob(
             packedSign.blob,
@@ -798,8 +905,9 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
     if (activeTab === "pdf" && packedPdf) {
       return {
-        label: `Download Ready PDF (${packedPdf.sizeKB} KB)`,
-        meta: `${packedPdf.pageCount} A4 ${packedPdf.pageCount === 1 ? "Page" : "Pages"} • Under ${packedPdf.maxKB} KB`,
+        line1: `Under ${packedPdf.maxKB} KB • PDF`,
+        line2: `${packedPdf.pageCount} A4 ${packedPdf.pageCount === 1 ? "Page" : "Pages"}`,
+        ctaLabel: `Download (${packedPdf.sizeKB} KB)`,
         onTrigger: () =>
           downloadBlob(
             packedPdf.blob,
@@ -809,8 +917,9 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
     if (activeTab === "webcam" && webcamCapturedResult) {
       return {
-        label: `Download SSC Photo (${webcamCapturedResult.report.sizeKB} KB)`,
-        meta: `275×354 px • 200 DPI Verified`,
+        line1: `200 DPI • 20–50 KB`,
+        line2: `275×354 px • JPG`,
+        ctaLabel: `Download (${webcamCapturedResult.report.sizeKB} KB)`,
         onTrigger: () =>
           downloadBlob(
             webcamCapturedResult.blob,
@@ -822,8 +931,9 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
     if (activeTab === "printsheet" && packedSheet) {
       return {
-        label: `Download 4×6 Print Sheet (${packedSheet.report.sizeKB} KB)`,
-        meta: `1800×1200 px • 300 DPI Lab Ready`,
+        line1: `300 DPI • 4×6 Inch`,
+        line2: `1800×1200 px • JPG`,
+        ctaLabel: `Download (${packedSheet.report.sizeKB} KB)`,
         onTrigger: () =>
           downloadBlob(
             packedSheet.blob,
@@ -861,11 +971,11 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     applyPreset(found.presets[0]);
                   }
                 }}
-                className="w-full min-h-[44px] appearance-none px-3.5 py-2 pr-9 rounded-xl border-2 border-slate-200 hover:border-blue-400 focus:border-blue-600 focus:outline-none bg-slate-50/70 text-slate-900 font-bold text-base sm:text-sm transition cursor-pointer"
+                className="w-full min-h-[44px] appearance-none px-3.5 py-2 pr-10 truncate rounded-xl border-2 border-slate-200 hover:border-blue-400 focus:border-blue-600 focus:outline-none bg-slate-50/70 text-slate-900 font-bold text-base sm:text-sm transition cursor-pointer"
               >
                 {EXAMS.map((exam) => (
                   <option key={exam.slug} value={exam.slug}>
-                    {exam.shortName} — {exam.conductingBody}
+                    {exam.shortName} ({exam.conductingBody})
                   </option>
                 ))}
               </select>
@@ -921,11 +1031,11 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
         </div>
       </div>
 
-      {/* 6-Tool Switcher: Swipeable Horizontal Pill Strip on Mobile, 6-Col Grid on Desktop */}
+      {/* 6-Tool Switcher: Clean 3x2 Grid on Mobile (All 6 Tools 100% Visible with Zero Clipping), 6-Col Row on Desktop */}
       <div
         role="tablist"
         aria-label="ExamDoc 6-in-1 Document Suite"
-        className="flex lg:grid lg:grid-cols-6 gap-2 overflow-x-auto no-scrollbar flex-nowrap snap-x pb-1"
+        className="grid grid-cols-3 lg:grid-cols-6 gap-2"
       >
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -936,26 +1046,26 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
               type="button"
               role="tab"
               aria-selected={isActive}
-              onClick={() => setActiveTab(t.id)}
-              className={`snap-start shrink-0 min-h-[48px] px-3.5 py-2.5 rounded-2xl border text-left transition-all flex items-center gap-2.5 ${
+              onClick={() => handleSwitchTab(t.id)}
+              className={`min-h-[54px] p-2 sm:px-3 sm:py-2.5 rounded-2xl border transition-all flex flex-col sm:flex-row items-center justify-center sm:justify-start text-center sm:text-left gap-1 sm:gap-2.5 ${
                 isActive
                   ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                   : "bg-white text-slate-700 border-slate-200/90 hover:border-blue-300"
               }`}
             >
               <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
                 }`}
               >
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="min-w-0 pr-1">
-                <div className="text-xs sm:text-sm font-bold leading-tight whitespace-nowrap">
+              <div className="min-w-0">
+                <div className="text-[11px] sm:text-xs font-extrabold leading-tight">
                   {t.title}
                 </div>
                 <div
-                  className={`text-[11px] whitespace-nowrap ${
+                  className={`hidden sm:block text-[10px] truncate ${
                     isActive ? "text-blue-100" : "text-slate-500"
                   }`}
                 >
@@ -987,19 +1097,19 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "photo" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* 1. Prominent Upload Dropzone (Mobile Order 1, Desktop Left Col) */}
-          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
-            <label className="group cursor-pointer min-h-[110px] flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
-              <div className="flex items-center gap-3 text-left">
+          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 overflow-hidden">
+            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
                 <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-2xs shrink-0">
                   <Upload className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                <div className="min-w-0 flex-1 break-words whitespace-normal">
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900 break-words">
                     Tap to Upload Passport Photo
                   </div>
-                  <div className="text-xs text-slate-600 mt-0.5 truncate">
+                  <div className="text-xs text-slate-600 mt-0.5 break-words whitespace-normal">
                     JPG, PNG, WhatsApp WebP • Active:{" "}
-                    <span className="font-semibold text-blue-700">{uploadedPhotoName}</span>
+                    <span className="font-semibold text-blue-700 break-all">{uploadedPhotoName}</span>
                   </div>
                 </div>
               </div>
@@ -1106,7 +1216,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveTab("printsheet")}
+                    onClick={() => handleSwitchTab("printsheet")}
                     className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
                   >
                     <Printer className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -1114,7 +1224,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("signature")}
+                    onClick={() => handleSwitchTab("signature")}
                     className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
                   >
                     <PenTool className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -1476,19 +1586,19 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "signature" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* 1. Prominent Upload Dropzone (Mobile Order 1, Desktop Left Col) */}
-          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
-            <label className="group cursor-pointer min-h-[110px] flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
-              <div className="flex items-center gap-3 text-left">
+          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 overflow-hidden">
+            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
                 <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-2xs shrink-0">
                   <Upload className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                <div className="min-w-0 flex-1 break-words whitespace-normal">
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900 break-words">
                     Tap to Upload Signature, Thumb or Declaration
                   </div>
-                  <div className="text-xs text-slate-600 mt-0.5 truncate">
+                  <div className="text-xs text-slate-600 mt-0.5 break-words whitespace-normal">
                     Turns gray notebook paper pure white • Active:{" "}
-                    <span className="font-semibold text-blue-700">{uploadedSignName}</span>
+                    <span className="font-semibold text-blue-700 break-all">{uploadedSignName}</span>
                   </div>
                 </div>
               </div>
@@ -1893,17 +2003,17 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "pdf" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* 1. Prominent Upload Dropzone */}
-          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-4">
-            <label className="group cursor-pointer min-h-[110px] flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
-              <div className="flex items-center gap-3 text-left">
+          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-4 overflow-hidden">
+            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
                 <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-2xs shrink-0">
                   <Upload className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                <div className="min-w-0 flex-1 break-words whitespace-normal">
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900 break-words">
                     Tap to Add Marksheet or Aadhaar Photos (1–5)
                   </div>
-                  <div className="text-xs text-slate-600 mt-0.5">
+                  <div className="text-xs text-slate-600 mt-0.5 break-words whitespace-normal">
                     Combines images into a single clear PDF under 100KB, 200KB, or 300KB
                   </div>
                 </div>
@@ -2590,22 +2700,22 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {stickyDownload && (
         <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 md:hidden shadow-lg">
           <div className="max-w-md mx-auto flex items-center justify-between gap-2.5">
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1 truncate">
+            <div className="min-w-0 shrink">
+              <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="truncate">{stickyDownload.meta}</span>
+                <span className="truncate">{stickyDownload.line1}</span>
               </div>
               <div className="text-xs font-extrabold text-slate-900 truncate">
-                {activeExam.shortName}
+                {stickyDownload.line2}
               </div>
             </div>
             <button
               type="button"
               onClick={stickyDownload.onTrigger}
-              className="min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shrink-0"
+              className="min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm shrink-0"
             >
               <Download className="w-4 h-4 shrink-0" />
-              <span>{stickyDownload.label}</span>
+              <span>{stickyDownload.ctaLabel}</span>
             </button>
           </div>
         </div>

@@ -156,6 +156,22 @@ export const EXAMS: ExamPreset[] = [
         notes: "3.5x4.5 cm at 200 DPI, 20KB-50KB, plain light background, optional Name & DOP plaque."
       },
       {
+        id: "ssc-cgl-sign",
+        label: "SSC Signature (315×157 px, 10-20KB)",
+        tab: "signature",
+        widthPx: 315,
+        heightPx: 157,
+        widthCm: "4.0 cm",
+        heightCm: "2.0 cm",
+        minKB: 10,
+        maxKB: 20,
+        dpi: 200,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "JPG",
+        notes: "Running handwriting on pure white background, 10KB to 20KB."
+      },
+      {
         id: "ssc-cgl-webcam",
         label: "SSC Live Webcam Capture (20-50KB)",
         tab: "webcam",
@@ -246,7 +262,7 @@ export const EXAMS: ExamPreset[] = [
     presets: [
       {
         id: "ssc-sign-10-20",
-        label: "SSC Signature (315×157 px, 10-20KB, 200 DPI)",
+        label: "SSC Signature (315×157 px, 10-20KB)",
         tab: "signature",
         widthPx: 315,
         heightPx: 157,
@@ -259,6 +275,22 @@ export const EXAMS: ExamPreset[] = [
         requiresFaceOval: false,
         format: "JPG",
         notes: "Running handwriting on pure white background, 10KB to 20KB."
+      },
+      {
+        id: "ssc-photo-20-50",
+        label: "SSC Passport Photo (275×354 px, 20-50KB)",
+        tab: "photo",
+        widthPx: 275,
+        heightPx: 354,
+        widthCm: "3.5 cm",
+        heightCm: "4.5 cm",
+        minKB: 20,
+        maxKB: 50,
+        dpi: 200,
+        requiresNameDop: true,
+        requiresFaceOval: true,
+        format: "JPG",
+        notes: "3.5x4.5 cm at 200 DPI, 20KB-50KB."
       }
     ],
     rejectionReasons: [
@@ -343,6 +375,22 @@ export const EXAMS: ExamPreset[] = [
         requiresFaceOval: true,
         format: "JPG",
         notes: "30KB to 70KB at 200 DPI on plain white background."
+      },
+      {
+        id: "rrb-ntpc-sign",
+        label: "RRB Signature (315×157 px, 30-70KB)",
+        tab: "signature",
+        widthPx: 315,
+        heightPx: 157,
+        widthCm: "4.0 cm",
+        heightCm: "2.0 cm",
+        minKB: 32,
+        maxKB: 68,
+        dpi: 200,
+        requiresNameDop: false,
+        requiresFaceOval: false,
+        format: "JPG",
+        notes: "30KB to 70KB at 200 DPI on pure white background."
       }
     ],
     rejectionReasons: [
@@ -413,7 +461,7 @@ export const EXAMS: ExamPreset[] = [
     presets: [
       {
         id: "rrb-sign-30-70",
-        label: "RRB Signature (315×157 px, 30-70KB, 200 DPI)",
+        label: "RRB Signature (315×157 px, 30-70KB)",
         tab: "signature",
         widthPx: 315,
         heightPx: 157,
@@ -426,6 +474,22 @@ export const EXAMS: ExamPreset[] = [
         requiresFaceOval: false,
         format: "JPG",
         notes: "Automatically pads small 315x157 signatures into the 32KB-68KB band before 0xFFD9."
+      },
+      {
+        id: "rrb-photo-30-70",
+        label: "RRB Passport Photo (275×354 px, 30-70KB)",
+        tab: "photo",
+        widthPx: 275,
+        heightPx: 354,
+        widthCm: "3.5 cm",
+        heightCm: "4.5 cm",
+        minKB: 32,
+        maxKB: 68,
+        dpi: 200,
+        requiresNameDop: true,
+        requiresFaceOval: true,
+        format: "JPG",
+        notes: "30KB to 70KB at 200 DPI."
       }
     ],
     rejectionReasons: [

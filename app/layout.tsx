@@ -62,7 +62,7 @@ export default function RootLayout({
     <html lang="en-IN" className="overflow-x-hidden">
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 overflow-x-hidden">
         <Navbar />
-        <main className="flex-1 pb-24 md:pb-0">{children}</main>
+        <main className="flex-1">{children}</main>
         <Footer />
       </body>
       <GoogleAnalytics gaId="G-RYET9N3JF1" />

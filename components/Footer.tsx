@@ -1,7 +1,14 @@
 import React from "react";
 import Link from "next/link";
-import { EXAMS } from "@/data/exams";
+import { EXAMS, ExamPreset } from "@/data/exams";
 import { FileCheck2, ShieldCheck } from "lucide-react";
+
+function formatFooterExamLabel(exam: ExamPreset): string {
+  if (/kb/i.test(exam.shortName)) {
+    return exam.shortName;
+  }
+  return `${exam.shortName} (${exam.minKB}–${exam.maxKB} KB)`;
+}
 
 export default function Footer() {
   const col1 = EXAMS.slice(0, 6);
@@ -9,8 +16,8 @@ export default function Footer() {
   const col3 = EXAMS.slice(12, 18);
 
   return (
-    <footer className="bg-slate-950 text-slate-300 border-t border-slate-800 mt-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <footer className="bg-slate-950 text-slate-300 border-t border-slate-800 mt-10 pb-24 md:pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         {/* Top Brand Summary Row */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-slate-800">
           <div className="space-y-1.5 max-w-xl">
@@ -46,7 +53,7 @@ export default function Footer() {
                     href={`/${exam.slug}`}
                     className="inline-flex items-center min-h-[36px] text-xs text-slate-400 hover:text-white transition"
                   >
-                    {exam.shortName} — {exam.minKB}–{exam.maxKB} KB
+                    {formatFooterExamLabel(exam)}
                   </Link>
                 </li>
               ))}
@@ -64,7 +71,7 @@ export default function Footer() {
                     href={`/${exam.slug}`}
                     className="inline-flex items-center min-h-[36px] text-xs text-slate-400 hover:text-white transition"
                   >
-                    {exam.shortName} — {exam.minKB}–{exam.maxKB} KB
+                    {formatFooterExamLabel(exam)}
                   </Link>
                 </li>
               ))}
@@ -82,7 +89,7 @@ export default function Footer() {
                     href={`/${exam.slug}`}
                     className="inline-flex items-center min-h-[36px] text-xs text-slate-400 hover:text-white transition"
                   >
-                    {exam.shortName} — {exam.minKB}–{exam.maxKB} KB
+                    {formatFooterExamLabel(exam)}
                   </Link>
                 </li>
               ))}
