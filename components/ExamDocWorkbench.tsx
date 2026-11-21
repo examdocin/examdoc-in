@@ -27,7 +27,10 @@ import {
   ChevronDown,
   ChevronUp,
   Wand2,
-  ScanLine
+  ScanLine,
+  Search,
+  Maximize2,
+  X
 } from "lucide-react";
 import DocumentScannerStudio from "./DocumentScannerStudio";
 import {
@@ -170,6 +173,12 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
   const [sheetProcessing, setSheetProcessing] = useState<boolean>(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toolSearchQuery, setToolSearchQuery] = useState<string>("");
+  const [enlargedPreview, setEnlargedPreview] = useState<{
+    src: string;
+    title: string;
+    meta: string;
+  } | null>(null);
 
   const applyPreset = useCallback((preset: DocumentPreset) => {
     setSelectedPresetId(preset.id);
@@ -829,7 +838,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     },
     {
       id: "pdf",
-      title: "PDF <100KB",
+      title: "PDF Compressor",
       subtitle: "Marksheet & Aadhaar",
       icon: FileText
     },
@@ -847,25 +856,37 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
     }
   ];
 
-  // Filter exams for the directory grid
+  // Filter exams for the directory grid (by Category + Search Query)
   const filteredExams = EXAMS.filter((exam) => {
-    if (categoryFilter === "All") return true;
-    if (categoryFilter === "SSC & RRB") {
-      return exam.slug.includes("ssc") || exam.slug.includes("rrb") || exam.slug.includes("wbpsc");
-    }
-    if (categoryFilter === "Banking") {
-      return exam.category === "Banking & Insurance";
-    }
-    if (categoryFilter === "NEET & UPSC") {
-      return (
-        exam.category === "Medical & Engineering" ||
-        exam.slug.includes("upsc")
-      );
-    }
-    if (categoryFilter === "PAN & PDF") {
-      return exam.category === "Identity & PAN" || exam.category === "PDF & Marksheet";
-    }
-    return true;
+    const matchesCategory =
+      categoryFilter === "All"
+        ? true
+        : categoryFilter === "SSC & RRB"
+          ? exam.slug.includes("ssc") ||
+            exam.slug.includes("rrb") ||
+            exam.slug.includes("wbpsc")
+          : categoryFilter === "Banking"
+            ? exam.category === "Banking & Insurance"
+            : categoryFilter === "NEET & UPSC"
+              ? exam.category === "Medical & Engineering" ||
+                exam.slug.includes("upsc")
+              : categoryFilter === "PAN & PDF"
+                ? exam.category === "Identity & PAN" ||
+                  exam.category === "PDF & Marksheet"
+                : true;
+
+    if (!matchesCategory) return false;
+
+    const q = toolSearchQuery.trim().toLowerCase();
+    if (!q) return true;
+
+    return (
+      exam.shortName.toLowerCase().includes(q) ||
+      exam.title.toLowerCase().includes(q) ||
+      exam.conductingBody.toLowerCase().includes(q) ||
+      exam.category.toLowerCase().includes(q) ||
+      exam.keywords.some((k) => k.toLowerCase().includes(q))
+    );
   });
 
   // Determine active sticky mobile download action (compact 2-line left meta + concise right CTA)
@@ -947,17 +968,60 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
   const stickyDownload = getStickyDownloadAction();
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5 space-y-4">
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
       {/* Mobile-First Exam Preset & Document Slot Selector Card */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-5 shadow-2xs border border-slate-200/90">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-center">
-          {/* Step 1: Select Exam Dropdown */}
+      <div className="bg-white rounded-[16px] p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] border border-[#E2E8F0] space-y-4">
+        {/* Quick Selectable Exam Chips (Zero Horizontal Overflow, Clean Wrap) */}
+        <div>
+          <span className="block text-[11px] font-bold uppercase tracking-wider text-[#64748B] mb-2">
+            Popular Exams &amp; Portals
+          </span>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {[
+              { label: "SSC", slug: "ssc-cgl-photo-resizer-20kb-to-50kb" },
+              { label: "UPSC", slug: "upsc-photo-resizer-350x350-to-1000x1000-name-date" },
+              { label: "IBPS", slug: "ibps-sbi-photo-resizer-200x230-20kb-50kb" },
+              { label: "SBI", slug: "ibps-sbi-handwritten-declaration-resizer-800x400-50kb-100kb" },
+              { label: "RRB", slug: "rrb-ntpc-group-d-photo-resizer-30kb-to-70kb" },
+              { label: "NEET", slug: "neet-ug-photo-resizer-80-percent-face-name-date" },
+              { label: "PAN", slug: "nsdl-uti-pan-card-photo-213x213-300-dpi-resizer" },
+              { label: "WBPSC", slug: "wbpsc-wbcs-wb-police-photo-signature-resizer" },
+              { label: "GDS", slug: "jee-main-cuet-india-post-gds-photo-signature-resizer" },
+              { label: "Marksheet PDF", slug: "marksheet-pdf-size-reducer-under-100kb-200kb" }
+            ].map((chip) => {
+              const isChipActive = selectedExamSlug === chip.slug;
+              return (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => {
+                    setSelectedExamSlug(chip.slug);
+                    const found = EXAMS.find((ex) => ex.slug === chip.slug);
+                    if (found && found.presets[0]) {
+                      applyPreset(found.presets[0]);
+                    }
+                  }}
+                  className={`min-h-[36px] px-3 py-1 rounded-[10px] text-xs font-semibold border transition ${
+                    isChipActive
+                      ? "bg-[#2864E8] text-white border-[#2864E8] shadow-2xs"
+                      : "bg-[#F5F7FA] text-[#0F172A] border-[#E2E8F0] hover:border-[#2864E8]/50"
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start pt-3 border-t border-[#E2E8F0]">
+          {/* Step 1: Full 18-Exam Preset Dropdown */}
           <div className="lg:col-span-5">
             <label
               htmlFor="exam-selector"
-              className="block text-xs font-bold uppercase tracking-wider text-blue-600 mb-1"
+              className="block text-[11px] font-bold uppercase tracking-wider text-[#2864E8] mb-1.5"
             >
-              1. Choose Exam or Portal Preset
+              1. Exam / Portal Specification
             </label>
             <div className="relative">
               <select
@@ -971,7 +1035,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     applyPreset(found.presets[0]);
                   }
                 }}
-                className="w-full min-h-[44px] appearance-none px-3.5 py-2 pr-10 truncate rounded-xl border-2 border-slate-200 hover:border-blue-400 focus:border-blue-600 focus:outline-none bg-slate-50/70 text-slate-900 font-bold text-base sm:text-sm transition cursor-pointer"
+                className="w-full min-h-[44px] appearance-none px-3.5 py-2 pr-10 truncate rounded-[12px] border border-[#E2E8F0] hover:border-[#2864E8]/60 focus:border-[#2864E8] focus:outline-none bg-[#F5F7FA] text-[#0F172A] font-semibold text-base sm:text-sm transition cursor-pointer"
               >
                 {EXAMS.map((exam) => (
                   <option key={exam.slug} value={exam.slug}>
@@ -979,18 +1043,18 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
           {/* Step 2: Document Type Toggle Pills */}
           <div className="lg:col-span-7">
             <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
                 2. Document Slot
               </span>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/20 px-2.5 py-0.5 rounded-full">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span>
                   {activeTab === "pdf" || activeTab === "scanner"
                     ? `${pdfMinKB}–${pdfMaxKB} KB PDF`
@@ -1007,18 +1071,18 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                     key={preset.id}
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                    className={`min-h-[44px] px-3 py-2 rounded-[12px] text-xs font-semibold border transition-all flex items-center gap-2 ${
                       isSelected
-                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                        : "bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-300"
+                        ? "bg-[#2864E8] text-white border-[#2864E8] shadow-2xs"
+                        : "bg-[#F5F7FA] text-[#0F172A] border-[#E2E8F0] hover:border-[#2864E8]/50"
                     }`}
                   >
                     <span className="text-left">{preset.label}</span>
                     <span
                       className={`px-2 py-0.5 rounded-md text-[11px] font-semibold shrink-0 ${
                         isSelected
-                          ? "bg-blue-700 text-blue-100"
-                          : "bg-slate-200/80 text-slate-600"
+                          ? "bg-white/20 text-white"
+                          : "bg-white text-[#64748B] border border-[#E2E8F0]"
                       }`}
                     >
                       {preset.minKB}–{preset.maxKB} KB
@@ -1031,11 +1095,11 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
         </div>
       </div>
 
-      {/* 6-Tool Switcher: Clean 3x2 Grid on Mobile (All 6 Tools 100% Visible with Zero Clipping), 6-Col Row on Desktop */}
+      {/* Quick Tools Switcher: Consistent Compact 3x2 Mobile / 6-Col Desktop Cards */}
       <div
         role="tablist"
         aria-label="ExamDoc 6-in-1 Document Suite"
-        className="grid grid-cols-3 lg:grid-cols-6 gap-2"
+        className="grid grid-cols-3 lg:grid-cols-6 gap-2.5"
       >
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -1047,26 +1111,26 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
               role="tab"
               aria-selected={isActive}
               onClick={() => handleSwitchTab(t.id)}
-              className={`min-h-[54px] p-2 sm:px-3 sm:py-2.5 rounded-2xl border transition-all flex flex-col sm:flex-row items-center justify-center sm:justify-start text-center sm:text-left gap-1 sm:gap-2.5 ${
+              className={`min-h-[56px] p-2.5 sm:px-3 sm:py-2.5 rounded-[16px] border transition-all flex flex-col sm:flex-row items-center justify-center sm:justify-start text-center sm:text-left gap-1.5 sm:gap-2.5 ${
                 isActive
-                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                  : "bg-white text-slate-700 border-slate-200/90 hover:border-blue-300"
+                  ? "bg-[#2864E8] text-white border-[#2864E8] shadow-[0_2px_8px_rgba(40,100,232,0.22)]"
+                  : "bg-white text-[#0F172A] border-[#E2E8F0] hover:border-[#2864E8]/50 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
               }`}
             >
               <div
-                className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
+                className={`w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0 ${
+                  isActive ? "bg-white/20 text-white" : "bg-[#F5F7FA] text-[#2864E8]"
                 }`}
               >
-                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] sm:text-xs font-extrabold leading-tight">
+                <div className="text-[11px] sm:text-xs font-bold leading-tight">
                   {t.title}
                 </div>
                 <div
                   className={`hidden sm:block text-[10px] truncate ${
-                    isActive ? "text-blue-100" : "text-slate-500"
+                    isActive ? "text-white/80" : "text-[#64748B]"
                   }`}
                 >
                   {t.subtitle}
@@ -1097,23 +1161,23 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "photo" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* 1. Prominent Upload Dropzone (Mobile Order 1, Desktop Left Col) */}
-          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 overflow-hidden">
-            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
+          <div className="order-1 lg:col-span-7 bg-white rounded-[16px] border border-[#E2E8F0] shadow-[0_1px_3px_rgba(15,23,42,0.04)] p-4 sm:p-5 overflow-hidden space-y-3">
+            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-[12px] border-2 border-dashed border-[#2864E8]/35 bg-[#F5F7FA] hover:border-[#2864E8] hover:bg-[#2864E8]/5 transition">
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
-                <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-2xs shrink-0">
+                <div className="w-11 h-11 rounded-[12px] bg-[#2864E8] text-white flex items-center justify-center shadow-2xs shrink-0">
                   <Upload className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 break-words whitespace-normal">
-                  <div className="text-sm sm:text-base font-extrabold text-slate-900 break-words">
+                  <div className="text-sm sm:text-base font-bold text-[#0F172A] break-words">
                     Tap to Upload Passport Photo
                   </div>
-                  <div className="text-xs text-slate-600 mt-0.5 break-words whitespace-normal">
-                    JPG, PNG, WhatsApp WebP • Active:{" "}
-                    <span className="font-semibold text-blue-700 break-all">{uploadedPhotoName}</span>
+                  <div className="text-xs text-[#64748B] mt-0.5 break-words whitespace-normal">
+                    Supports JPG, PNG, WebP, HEIC • Active:{" "}
+                    <span className="font-semibold text-[#2864E8] break-words">{uploadedPhotoName}</span>
                   </div>
                 </div>
               </div>
-              <span className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center shrink-0 transition">
+              <span className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-[12px] bg-[#2864E8] group-hover:bg-[#1E52C8] text-white font-semibold text-sm flex items-center justify-center shrink-0 transition">
                 Choose Photo
               </span>
               <input
@@ -1123,72 +1187,111 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 className="hidden"
               />
             </label>
+
+            <div className="flex items-center justify-between gap-2 text-xs text-[#64748B]">
+              <span>100% browser-side • Never uploaded</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const demo = await createDemoPassportPhoto();
+                  setPhotoImage(demo);
+                  setUploadedPhotoName("Sample Demo Photo");
+                  setPhotoZoom(1.0);
+                  setPhotoPanX(0);
+                  setPhotoPanY(0);
+                  setPhotoRotation(0);
+                }}
+                className="text-xs font-semibold text-[#2864E8] hover:underline py-1"
+              >
+                Load Sample Demo Photo
+              </button>
+            </div>
           </div>
 
           {/* 2. Live Output Preview Card (Mobile Order 2, Desktop Right Col spanning rows) */}
-          <div className="order-2 lg:col-span-5 lg:row-span-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col items-center">
-            <div className="w-full flex items-center justify-between mb-2.5">
+          <div className="order-2 lg:col-span-5 lg:row-span-3 bg-white rounded-[16px] border border-[#E2E8F0] shadow-[0_2px_6px_rgba(15,23,42,0.05)] p-4 sm:p-5 flex flex-col items-center">
+            <div className="w-full flex items-center justify-between gap-2 mb-3">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-900">
+                <h3 className="text-sm font-bold text-[#0F172A]">
                   Live Output Preview
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#64748B]">
                   Portal-Verified JPG • {dpi} DPI
                 </p>
               </div>
-              {photoProcessing ? (
-                <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-1.5">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Updating...
-                </span>
-              ) : packedPhoto ? (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  {packedPhoto.report.sizeKB} KB Ready
-                </span>
-              ) : null}
+              <div className="flex items-center gap-1.5">
+                {photoProcessing ? (
+                  <span className="px-2.5 py-1 rounded-full bg-[#2864E8]/10 text-[#2864E8] text-xs font-semibold flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Updating...
+                  </span>
+                ) : packedPhoto ? (
+                  <span className="px-2.5 py-1 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 text-[#16A34A] text-xs font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    {packedPhoto.report.sizeKB} KB Ready
+                  </span>
+                ) : null}
+
+                {packedPhoto && (
+                  <button
+                    type="button"
+                    aria-label="Enlarge Preview"
+                    onClick={() =>
+                      setEnlargedPreview({
+                        src: packedPhoto.dataUrl,
+                        title: `Passport Photo Preview (${packedPhoto.report.widthPx}×${packedPhoto.report.heightPx} px)`,
+                        meta: `${packedPhoto.report.sizeKB} KB • ${packedPhoto.report.dpiX} DPI • Portal-Verified JPG`
+                      })
+                    }
+                    className="min-h-[36px] min-w-[36px] rounded-[10px] border border-[#E2E8F0] bg-[#F5F7FA] hover:bg-slate-200/70 text-[#0F172A] flex items-center justify-center transition"
+                    title="Enlarge Preview"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Compact Mobile Preview Canvas */}
-            <div className="relative bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-center w-full min-h-[190px] sm:min-h-[260px]">
+            {/* Clean Neutral Preview Backdrop */}
+            <div className="relative bg-[#F5F7FA] border border-[#E2E8F0] rounded-[12px] p-4 flex items-center justify-center w-full min-h-[200px] sm:min-h-[270px]">
               <canvas
                 ref={photoPreviewCanvasRef}
-                className="max-h-[200px] sm:max-h-[280px] w-auto rounded-lg shadow-sm bg-white border border-slate-200"
+                className="max-h-[210px] sm:max-h-[290px] w-auto rounded-lg shadow-[0_2px_10px_rgba(15,23,42,0.08)] bg-white border border-[#E2E8F0]"
               />
             </div>
 
             {show80FaceGuide && (
-              <p className="mt-2 text-[11px] text-slate-500 text-center">
+              <p className="mt-2 text-[11px] text-[#64748B] text-center">
                 Green 80% oval guide is for alignment only and will{" "}
-                <strong className="text-slate-700">not</strong> appear on the downloaded photo.
+                <strong className="text-[#0F172A]">not</strong> appear on the downloaded photo.
               </p>
             )}
 
             {packedPhoto && (
-              <div className="w-full mt-3.5 space-y-3">
+              <div className="w-full mt-4 space-y-3">
                 {/* 3 Stat Chips: File Size, Dimensions, DPI */}
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="p-2.5 rounded-[12px] bg-[#F5F7FA] border border-[#E2E8F0]">
+                    <div className="text-[10px] font-bold uppercase text-[#64748B]">
                       File Size
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-emerald-600">
+                    <div className="text-xs sm:text-sm font-bold text-[#16A34A]">
                       {packedPhoto.report.sizeKB} KB
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="p-2.5 rounded-[12px] bg-[#F5F7FA] border border-[#E2E8F0]">
+                    <div className="text-[10px] font-bold uppercase text-[#64748B]">
                       Dimensions
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-slate-800">
+                    <div className="text-xs sm:text-sm font-bold text-[#0F172A]">
                       {packedPhoto.report.widthPx}×{packedPhoto.report.heightPx}
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="p-2.5 rounded-[12px] bg-[#F5F7FA] border border-[#E2E8F0]">
+                    <div className="text-[10px] font-bold uppercase text-[#64748B]">
                       Resolution
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-blue-600">
+                    <div className="text-xs sm:text-sm font-bold text-[#2864E8]">
                       {packedPhoto.report.dpiX} DPI
                     </div>
                   </div>
@@ -1205,7 +1308,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       )}kb.jpg`
                     )
                   }
-                  className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-sm flex items-center justify-center gap-2 transition"
+                  className="w-full min-h-[48px] py-3 px-4 rounded-[12px] bg-[#16A34A] hover:bg-[#15803D] text-white font-semibold text-sm sm:text-base shadow-xs flex items-center justify-center gap-2 transition"
                 >
                   <Download className="w-5 h-5 shrink-0" />
                   <span>
@@ -1586,23 +1689,23 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
       {activeTab === "signature" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* 1. Prominent Upload Dropzone (Mobile Order 1, Desktop Left Col) */}
-          <div className="order-1 lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 overflow-hidden">
-            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:border-blue-500 hover:bg-blue-50 transition">
+          <div className="order-1 lg:col-span-7 bg-white rounded-[16px] border border-[#E2E8F0] shadow-[0_1px_3px_rgba(15,23,42,0.04)] p-4 sm:p-5 overflow-hidden space-y-3">
+            <label className="group cursor-pointer w-full max-w-full overflow-hidden min-h-[110px] flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:justify-between p-4 rounded-[12px] border-2 border-dashed border-[#2864E8]/35 bg-[#F5F7FA] hover:border-[#2864E8] hover:bg-[#2864E8]/5 transition">
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
-                <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-2xs shrink-0">
+                <div className="w-11 h-11 rounded-[12px] bg-[#2864E8] text-white flex items-center justify-center shadow-2xs shrink-0">
                   <Upload className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 break-words whitespace-normal">
-                  <div className="text-sm sm:text-base font-extrabold text-slate-900 break-words">
+                  <div className="text-sm sm:text-base font-bold text-[#0F172A] break-words">
                     Tap to Upload Signature, Thumb or Declaration
                   </div>
-                  <div className="text-xs text-slate-600 mt-0.5 break-words whitespace-normal">
+                  <div className="text-xs text-[#64748B] mt-0.5 break-words whitespace-normal">
                     Turns gray notebook paper pure white • Active:{" "}
-                    <span className="font-semibold text-blue-700 break-all">{uploadedSignName}</span>
+                    <span className="font-semibold text-[#2864E8] break-words">{uploadedSignName}</span>
                   </div>
                 </div>
               </div>
-              <span className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center shrink-0 transition">
+              <span className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-[12px] bg-[#2864E8] group-hover:bg-[#1E52C8] text-white font-semibold text-sm flex items-center justify-center shrink-0 transition">
                 Choose Image
               </span>
               <input
@@ -1612,65 +1715,104 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                 className="hidden"
               />
             </label>
+
+            <div className="flex items-center justify-between gap-2 text-xs text-[#64748B]">
+              <span>100% browser-side • Never uploaded</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const demo = await createDemoGrayPaperSignature();
+                  setSignImage(demo);
+                  setUploadedSignName("Sample Handwritten Signature");
+                  setSignZoom(1.0);
+                  setSignPanX(0);
+                  setSignPanY(0);
+                  setSignRotation(0);
+                }}
+                className="text-xs font-semibold text-[#2864E8] hover:underline py-1"
+              >
+                Load Sample Signature
+              </button>
+            </div>
           </div>
 
           {/* 2. Live Output Preview Card (Mobile Order 2, Desktop Right Col) */}
-          <div className="order-2 lg:col-span-5 lg:row-span-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col items-center">
-            <div className="w-full flex items-center justify-between mb-2.5">
+          <div className="order-2 lg:col-span-5 lg:row-span-3 bg-white rounded-[16px] border border-[#E2E8F0] shadow-[0_2px_6px_rgba(15,23,42,0.05)] p-4 sm:p-5 flex flex-col items-center">
+            <div className="w-full flex items-center justify-between gap-2 mb-3">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-900">
+                <h3 className="text-sm font-bold text-[#0F172A]">
                   Whitened Output Preview
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#64748B]">
                   Portal-Verified JPG • {dpi} DPI
                 </p>
               </div>
-              {signProcessing ? (
-                <span className="text-xs font-bold text-blue-600">Cleaning...</span>
-              ) : packedSign ? (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  {packedSign.report.sizeKB} KB Ready
-                </span>
-              ) : null}
+              <div className="flex items-center gap-1.5">
+                {signProcessing ? (
+                  <span className="text-xs font-semibold text-[#2864E8]">Cleaning...</span>
+                ) : packedSign ? (
+                  <span className="px-2.5 py-1 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 text-[#16A34A] text-xs font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    {packedSign.report.sizeKB} KB Ready
+                  </span>
+                ) : null}
+
+                {packedSign && (
+                  <button
+                    type="button"
+                    aria-label="Enlarge Signature Preview"
+                    onClick={() =>
+                      setEnlargedPreview({
+                        src: packedSign.dataUrl,
+                        title: `Signature / Declaration Preview (${packedSign.report.widthPx}×${packedSign.report.heightPx} px)`,
+                        meta: `${packedSign.report.sizeKB} KB • ${packedSign.report.dpiX} DPI • Pure White Paper`
+                      })
+                    }
+                    className="min-h-[36px] min-w-[36px] rounded-[10px] border border-[#E2E8F0] bg-[#F5F7FA] hover:bg-slate-200/70 text-[#0F172A] flex items-center justify-center transition"
+                    title="Enlarge Preview"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="w-full min-h-[170px] sm:min-h-[210px] bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-center">
+            <div className="w-full min-h-[175px] sm:min-h-[215px] bg-[#F5F7FA] border border-[#E2E8F0] rounded-[12px] p-3.5 flex items-center justify-center">
               {packedSign ? (
                 <img
                   src={packedSign.dataUrl}
                   alt="Processed Signature or Declaration Preview"
-                  className="max-h-[180px] sm:max-h-[210px] w-auto rounded-lg shadow-sm bg-white border border-slate-200"
+                  className="max-h-[180px] sm:max-h-[210px] w-auto rounded-lg shadow-[0_2px_8px_rgba(15,23,42,0.06)] bg-white border border-[#E2E8F0]"
                 />
               ) : (
-                <span className="text-xs text-slate-400">Upload a signature image to preview</span>
+                <span className="text-xs text-[#64748B]">Upload a signature image to preview</span>
               )}
             </div>
 
             {packedSign && (
-              <div className="w-full mt-3.5 space-y-3">
+              <div className="w-full mt-4 space-y-3">
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="p-2.5 rounded-[12px] bg-[#F5F7FA] border border-[#E2E8F0]">
+                    <div className="text-[10px] font-bold uppercase text-[#64748B]">
                       File Size
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-emerald-600">
+                    <div className="text-xs sm:text-sm font-bold text-[#16A34A]">
                       {packedSign.report.sizeKB} KB
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="p-2.5 rounded-[12px] bg-[#F5F7FA] border border-[#E2E8F0]">
+                    <div className="text-[10px] font-bold uppercase text-[#64748B]">
                       Dimensions
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-slate-800">
+                    <div className="text-xs sm:text-sm font-bold text-[#0F172A]">
                       {packedSign.report.widthPx}×{packedSign.report.heightPx}
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="p-2.5 rounded-[12px] bg-[#F5F7FA] border border-[#E2E8F0]">
+                    <div className="text-[10px] font-bold uppercase text-[#64748B]">
                       Resolution
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-blue-600">
+                    <div className="text-xs sm:text-sm font-bold text-[#2864E8]">
                       {packedSign.report.dpiX} DPI
                     </div>
                   </div>
@@ -1686,7 +1828,7 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
                       )}kb.jpg`
                     )
                   }
-                  className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base shadow-sm flex items-center justify-center gap-2 transition"
+                  className="w-full min-h-[48px] py-3 px-4 rounded-[12px] bg-[#16A34A] hover:bg-[#15803D] text-white font-semibold text-sm sm:text-base shadow-xs flex items-center justify-center gap-2 transition"
                 >
                   <Download className="w-5 h-5 shrink-0" />
                   <span>
@@ -2636,87 +2778,163 @@ export default function ExamDocWorkbench({ initialExamSlug }: ExamDocWorkbenchPr
         />
       )}
 
-      {/* Single "All 18 Official Exam Tools" Directory with Swipeable Category Filter Pills */}
-      <div id="all-exams" className="pt-6 scroll-mt-20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3.5">
-          <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>All 18 Official Exam, Identity &amp; Scanner Tools</span>
-          </h2>
+      {/* Single "All 18 Official Exam Tools" Directory with Search Input + Category Filters */}
+      <div id="all-exams" className="pt-4 scroll-mt-20 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 className="text-base sm:text-lg font-extrabold text-[#0F172A] flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-[#2864E8] shrink-0" />
+              <span>All 18 Official Exam &amp; Identity Tools</span>
+            </h2>
+            <p className="text-xs text-[#64748B]">
+              Select any official Indian exam or document portal preset.
+            </p>
+          </div>
 
-          {/* Swipeable Category Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap pb-1">
-            {(["All", "SSC & RRB", "Banking", "NEET & UPSC", "PAN & PDF"] as const).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setCategoryFilter(cat)}
-                className={`min-h-[44px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition ${
-                  categoryFilter === cat
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-700 border-slate-200 hover:border-blue-400"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          {/* Search Input */}
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              value={toolSearchQuery}
+              onChange={(e) => setToolSearchQuery(e.target.value)}
+              placeholder="Search SSC, UPSC, IBPS, PAN, PDF..."
+              aria-label="Search official exam tools"
+              className="w-full min-h-[44px] pl-10 pr-3.5 py-2 rounded-[12px] border border-[#E2E8F0] bg-white focus:border-[#2864E8] focus:outline-none text-base sm:text-sm text-[#0F172A] placeholder:text-[#64748B]"
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredExams.map((exam) => (
-            <Link
-              key={exam.slug}
-              href={`/${exam.slug}`}
-              className="p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-500 hover:shadow-sm transition group flex flex-col justify-between min-h-[104px]"
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap pb-1">
+          {(["All", "SSC & RRB", "Banking", "NEET & UPSC", "PAN & PDF"] as const).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategoryFilter(cat)}
+              className={`min-h-[40px] px-3.5 py-1.5 rounded-[12px] text-xs font-semibold whitespace-nowrap border transition ${
+                categoryFilter === cat
+                  ? "bg-[#2864E8] text-white border-[#2864E8]"
+                  : "bg-white text-[#0F172A] border-[#E2E8F0] hover:border-[#2864E8]/50"
+              }`}
             >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm font-extrabold text-blue-600 group-hover:underline">
-                    {exam.shortName}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold shrink-0">
-                    {exam.dpi} DPI
-                  </span>
-                </div>
-                <div className="text-xs font-semibold text-slate-800 mt-1 line-clamp-1">
-                  {exam.title}
-                </div>
-              </div>
-              <div className="text-[11px] text-slate-500 mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span>
-                  {exam.widthPx}×{exam.heightPx} px
-                </span>
-                <span className="font-bold text-emerald-700">
-                  {exam.minKB}–{exam.maxKB} KB ({exam.format})
-                </span>
-              </div>
-            </Link>
+              {cat}
+            </button>
           ))}
         </div>
+
+        {filteredExams.length === 0 ? (
+          <div className="p-6 text-center rounded-[16px] bg-white border border-[#E2E8F0] text-sm text-[#64748B]">
+            No exam tools matched &ldquo;{toolSearchQuery}&rdquo;.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setToolSearchQuery("");
+                setCategoryFilter("All");
+              }}
+              className="text-[#2864E8] font-semibold underline ml-1"
+            >
+              Reset filter
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filteredExams.map((exam) => (
+              <Link
+                key={exam.slug}
+                href={`/${exam.slug}`}
+                className="p-4 rounded-[16px] bg-white border border-[#E2E8F0] hover:border-[#2864E8] shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition group flex flex-col justify-between min-h-[108px]"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-[#2864E8] group-hover:underline">
+                      {exam.shortName}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#F5F7FA] border border-[#E2E8F0] text-[#0F172A] text-[10px] font-bold shrink-0">
+                      {exam.dpi} DPI
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#64748B] mt-1 line-clamp-1">
+                    {exam.title}
+                  </div>
+                </div>
+                <div className="text-[11px] text-[#64748B] mt-3 pt-2.5 border-t border-[#E2E8F0]/70 flex items-center justify-between">
+                  <span className="font-medium text-[#0F172A]">
+                    {exam.widthPx}×{exam.heightPx} px
+                  </span>
+                  <span className="font-bold text-[#16A34A]">
+                    {exam.minKB}–{exam.maxKB} KB ({exam.format})
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Mobile Sticky Bottom Download Bar (Thumb Zone) */}
+      {/* Mobile Sticky Bottom Download Bar (Thumb Zone + Android/iOS Safe-Area Support) */}
       {stickyDownload && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 md:hidden shadow-lg">
-          <div className="max-w-md mx-auto flex items-center justify-between gap-2.5">
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-[#E2E8F0] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden shadow-[0_-4px_16px_rgba(15,23,42,0.08)]">
+          <div className="max-w-md mx-auto flex items-center justify-between gap-3">
             <div className="min-w-0 shrink">
-              <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <div className="text-[11px] font-semibold text-[#16A34A] flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{stickyDownload.line1}</span>
               </div>
-              <div className="text-xs font-extrabold text-slate-900 truncate">
+              <div className="text-xs font-bold text-[#0F172A] truncate">
                 {stickyDownload.line2}
               </div>
             </div>
             <button
               type="button"
               onClick={stickyDownload.onTrigger}
-              className="min-h-[48px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm shrink-0"
+              className="min-h-[48px] px-4 rounded-[12px] bg-[#16A34A] active:bg-[#15803D] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs shrink-0"
             >
               <Download className="w-4 h-4 shrink-0" />
               <span>{stickyDownload.ctaLabel}</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Preview Enlargement Modal */}
+      {enlargedPreview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={enlargedPreview.title}
+          onClick={() => setEnlargedPreview(null)}
+          className="fixed inset-0 z-50 bg-[#0F172A]/80 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-[16px] max-w-lg w-full p-4 sm:p-5 space-y-3 shadow-2xl border border-[#E2E8F0]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold text-[#0F172A] truncate">
+                  {enlargedPreview.title}
+                </h4>
+                <p className="text-xs text-[#64748B] truncate">
+                  {enlargedPreview.meta}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close Preview"
+                onClick={() => setEnlargedPreview(null)}
+                className="min-h-[44px] min-w-[44px] rounded-[12px] border border-[#E2E8F0] hover:bg-[#F5F7FA] text-[#0F172A] flex items-center justify-center shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-[#F5F7FA] border border-[#E2E8F0] rounded-[12px] p-4 flex items-center justify-center">
+              <img
+                src={enlargedPreview.src}
+                alt={enlargedPreview.title}
+                className="max-h-[65vh] w-auto rounded-lg bg-white border border-[#E2E8F0] shadow-sm"
+              />
+            </div>
           </div>
         </div>
       )}

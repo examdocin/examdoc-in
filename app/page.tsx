@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import ExamDocWorkbench from "@/components/ExamDocWorkbench";
 import ExamSeoArticle from "@/components/ExamSeoArticle";
 import { EXAMS } from "@/data/exams";
+import { Zap, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
   applicationName: "ExamDoc",
@@ -28,24 +29,36 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <div>
-      {/* Compact Above-the-Fold Hero Section */}
-      <section className="bg-gradient-to-b from-blue-50/80 via-indigo-50/30 to-slate-50 py-4 md:py-6 border-b border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 text-center">
-          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-slate-900 max-w-3xl mx-auto leading-tight">
-            Resize Govt Exam Photo, Signature &amp; PDF{" "}
-            <span className="text-blue-600 whitespace-nowrap">in 1 Click</span>
+      {/* Compact, Modern SaaS Hero Section */}
+      <section className="bg-white py-5 sm:py-7 border-b border-[#E2E8F0]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center space-y-2.5">
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#0F172A] leading-tight">
+            Your Documents. <span className="text-[#2864E8]">Exam Ready.</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1.5 max-w-2xl mx-auto leading-snug">
-            Official 200/300 DPI presets for{" "}
-            <strong className="text-slate-800">
-              SSC, UPSC, IBPS, SBI, NEET, RRB &amp; PAN
-            </strong>{" "}
-            — 100% private in your browser.
+          <p className="text-sm text-[#64748B] max-w-xl mx-auto leading-relaxed">
+            Resize SSC, UPSC, IBPS, SBI, RRB, NEET &amp; PAN photos, signatures, declarations, and marksheet PDFs to exact official portal specs.
           </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-1 text-xs font-semibold text-[#0F172A]">
+            <span className="inline-flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-[#2864E8]" />
+              Fast
+            </span>
+            <span className="text-[#E2E8F0]" aria-hidden="true">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#16A34A]" />
+              100% Private
+            </span>
+            <span className="text-[#E2E8F0]" aria-hidden="true">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#2864E8]" />
+              Free Forever
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* Main 5-Tab All-in-One Workbench (includes the #all-exams directory with category filters) */}
+      {/* Main 6-Tab All-in-One Workbench (includes the #all-exams directory with search & category filters) */}
       <ExamDocWorkbench />
 
       {/* Rich SEO Article & JSON-LD Schema for Homepage */}

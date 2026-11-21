@@ -1,13 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter"
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#2563EB"
+  viewportFit: "cover",
+  themeColor: "#2864E8"
 };
 
 export const metadata: Metadata = {
@@ -87,14 +95,16 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en-IN" className="overflow-x-hidden">
+    <html lang="en-IN" className={`${inter.variable} overflow-x-hidden`}>
       <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 overflow-x-hidden">
+      <body
+        className={`${inter.className} min-h-screen flex flex-col bg-[#F5F7FA] text-[#0F172A] overflow-x-hidden antialiased`}
+      >
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
