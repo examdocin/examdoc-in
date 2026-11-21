@@ -62,7 +62,7 @@ export default function ExamSeoArticle({ exam, canonicalUrl }: ExamSeoArticlePro
     tool: [
       {
         "@type": "HowToTool",
-        name: "ExamDoc.in Government Exam Document Resizer"
+        name: "ExamDoc"
       }
     ],
     step: exam.howToSteps.map((step, index) => ({

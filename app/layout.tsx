@@ -58,8 +58,42 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.examdoc.in/#website",
+        name: "ExamDoc",
+        alternateName: ["ExamDoc.in", "www.examdoc.in", "ExamDoc India"],
+        url: "https://www.examdoc.in/",
+        publisher: {
+          "@id": "https://www.examdoc.in/#organization"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.examdoc.in/#organization",
+        name: "ExamDoc",
+        url: "https://www.examdoc.in/",
+        logo: {
+          "@type": "ImageObject",
+          url: "https://www.examdoc.in/icon.png",
+          width: 192,
+          height: 192
+        }
+      }
+    ]
+  };
+
   return (
     <html lang="en-IN" className="overflow-x-hidden">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 overflow-x-hidden">
         <Navbar />
         <main className="flex-1">{children}</main>

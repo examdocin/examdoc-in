@@ -5,6 +5,7 @@ import ExamSeoArticle from "@/components/ExamSeoArticle";
 import { EXAMS } from "@/data/exams";
 
 export const metadata: Metadata = {
+  applicationName: "ExamDoc",
   title: {
     absolute: "Free Govt Exam Photo, Signature & PDF Resizer | ExamDoc"
   },
@@ -25,22 +26,8 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  const webSiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "ExamDoc",
-    alternateName: ["ExamDoc.in", "ExamDoc India"],
-    url: "https://www.examdoc.in/"
-  };
-
   return (
     <div>
-      {/* Google Site Name Structured Data (WebSite Schema) */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteSchema) }}
-      />
-
       {/* Compact Above-the-Fold Hero Section */}
       <section className="bg-gradient-to-b from-blue-50/80 via-indigo-50/30 to-slate-50 py-4 md:py-6 border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 text-center">

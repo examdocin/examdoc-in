@@ -23,7 +23,7 @@ export default function Footer() {
           <div className="space-y-1.5 max-w-xl">
             <div className="flex items-center">
               <span className="text-lg font-extrabold text-white">
-                ExamDoc<span className="text-blue-500">.in</span>
+                Exam<span className="text-blue-500">Doc</span>
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
@@ -96,7 +96,7 @@ export default function Footer() {
 
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <p>
-            © {new Date().getFullYear()} ExamDoc.in — Built for Indian Aspirants, CSC VLEs &amp; Cyber Cafes.
+            © {new Date().getFullYear()} ExamDoc — Built for Indian Aspirants, CSC VLEs &amp; Cyber Cafes.
           </p>
           <p>
             100% Privacy Guarantee: Your Aadhaar, PAN, Photos &amp; Marksheets never leave your device.

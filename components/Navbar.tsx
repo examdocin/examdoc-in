@@ -18,14 +18,14 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-16 flex items-center justify-between gap-2">
-        {/* Left: Clean ExamDoc.in Wordmark */}
+        {/* Left: Clean ExamDoc Wordmark */}
         <Link
           href="/"
           onClick={() => setMobileMenuOpen(false)}
           className="flex items-center shrink-0 min-h-[44px] group"
         >
           <span className="text-lg md:text-xl font-extrabold tracking-tight text-slate-900">
-            ExamDoc<span className="text-blue-600">.in</span>
+            Exam<span className="text-blue-600">Doc</span>
           </span>
         </Link>
 
